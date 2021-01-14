@@ -14,3 +14,13 @@ glimpse(train)
 summary(train)
 
 summary(train_pay)
+
+
+paymentsTrain <- subset(payments, Physician_ID %in% train$id )
+paymentsTest <- subset(payments, Physician_ID %in% test$id )
+
+paymentsTrainYes <- subset(paymentsTrain, Ownership_Indicator == 'Yes')
+paymentsTrainNo <- subset(paymentsTrain, Ownership_Indicator == 'No')
+
+trainPhysiciansYes <- subset(trainPhysicians, id %in% paymentsTrainYes$Physician_ID)
+trainPhysiciansNo <- subset(trainPhysicians, id %in% paymentsTrainYes$Physician_ID)
