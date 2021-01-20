@@ -10,8 +10,8 @@ trainPhysicians <- physicians[physicians$set == 'train', ]
 #A subset containig only Physicians Data that should be used for testing
 testPhysicians <- physicians[physicians$set == 'test', ]
 
-train_pay <- merge(x = train, y = payments, by.x = "id", by.y = "Physician_ID", all=TRUE)
-
+train_pay <- merge(x = trainPhysicians, y = payments, by.x = "id", by.y = "Physician_ID") # not all=true, it adds non-matched values at the end.
+test_pay <- merge(x = testPhysicians, y = payments, by.x = "id", by.y = "Physician_ID")
 glimpse(train)
 summary(train)
 
@@ -30,7 +30,7 @@ paymentsTrainNo <- subset(paymentsTrain, Ownership_Indicator == 'No')
 #A subset containing of only Physicians Data that should be used for training AND the Ownership Indicator is YES 
 trainPhysiciansYes <- subset(trainPhysicians, id %in% paymentsTrainYes$Physician_ID)
 #A subset containing of only Physicians Data that should be used for training AND the Ownership Indicator is NO -- PROBABLY NOT USABLE - NOT IMPORTANT
-trainPhysiciansNo <- subset(trainPhysicians, id %in% paymentsTrainNo$Physician_ID)
+trainPhysiciansNo <- subset(trainPhysicians, id %in% paymentsTrainNo$Physician_ID) # also not in trainPhysiciansYes should be.
 
 #Check if there is a significant difference in staates -> is not
 table(trainPhysiciansYes$State)/NROW(trainPhysiciansYes)

@@ -93,7 +93,7 @@ payments_exp <- payments %>% as_tibble()
 
 ## NUMBER OF PAYEMENTS
 subset(payments_exp, Number_of_Payments == 3)[order(payments_exp$Company_ID), ]
-## IS THERE A TRANS ID? 
+## IS THERE A TRANS ID? == Yes record id.
 ## ?
 
 ## Form_of_Payment_or_Transfer_of_Value
@@ -142,7 +142,7 @@ NROW(no_charity) ## 767502
 ## while this is could be a good corr., I don't think we can use the col
 # due to the low number of not null observations and also the huge of No's.
 payments_exp <- select(payments_exp, -c("Charity"))
-# should it be kept (?)
+# should it be kept (?) if na's are going to be converted to nos then yeah.
 
 ## Third_Party_Covered
 # lots of nulls and included in Third_Party_Recipient
@@ -181,8 +181,16 @@ NROW(subset(payments_exp, is.na(Product_Category_3)))/NROW(payments_exp) # 88%
 # only Product_Category_1. Also, removing rows with null values of category
 # risk: removing 38% of the data.
 
+
 # solution 3: impute.
 # hard: since there are 1678 values.
+
+#Related Product indicator converted to yeses and nos.
+payments_exp$Related_Product_Indicator[payments_exp$Related_Product_Indicator == 'Covered' 
+                                       | payments_exp$Related_Product_Indicator == 'Combination' 
+                                       | payments_exp$Related_Product_Indicator == 'Non-Covered'] <- 'Yes'
+payments_exp$Related_Product_Indicator[payments_exp$Related_Product_Indicator == 'None'] <- 'No'
+
 unique(payments_exp$Product_Category_1)
 summary(payments_exp$Product_Category_1)
 
@@ -191,9 +199,9 @@ summary(payments_exp$Product_Category_1)
 # null if country not US (?)
 
 #### PHYS NOT FROM US #####
-trainPhysicians[trainPhysicians$Country != 'UNITED STATES' & is.na(trainPhysicians$State), ]
+trainPhysicians[trainPhysicians$Country != 'UNITED STATES', ]
 
-companies[is.na(companies$Company_ID)]
+companies[is.na(companies$Company_ID), ] # There is not such a company exists.
 NROW(companies[companies$State == 'NY', ])
 NROW(companies[companies$State != 'NY', ])
 subset(companies, State == 'NY')
