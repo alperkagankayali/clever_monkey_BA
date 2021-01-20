@@ -70,3 +70,45 @@ orderdPNPSFrequency
 
 orderdPAPS <- setDT(trainPhysicians)[, .N, by = Primary_Specialty][order(-N)]
 
+#ProductCategories -> Neurology
+ProductCatAll <- setDT(paymentsTrain)[, .N, by = Product_Category_1][order(-N)]
+ProductCatYes1 <- setDT(paymentsTrainYes)[, .N, by = Product_Category_1][order(-N)]
+ProductCatYes2 <- setDT(paymentsTrainYes)[, .N, by = Product_Category_2][order(-N)]
+ProductCatYes3 <- setDT(paymentsTrainYes)[, .N, by = Product_Category_3][order(-N)]
+
+#ProductCategories -> Also filter -> 64406-008-01, 64406-006-02, 64406-011-01
+ProductCodeAll1 <- setDT(paymentsTrain)[, .N, by = Product_Code_1][order(-N)]
+ProductCodeYes1 <- setDT(paymentsTrainYes)[, .N, by = Product_Code_1][order(-N)]
+ProductCodeYes2 <- setDT(paymentsTrainYes)[, .N, by = Product_Code_2][order(-N)]
+ProductCodeYes3 <- setDT(paymentsTrainYes)[, .N, by = Product_Code_3][order(-N)]
+
+#ProductTypes -> Biological
+ProductTypeAll1 <- setDT(paymentsTrain)[, .N, by = Product_Type_1][order(-N)]
+ProductTypeYes1 <- setDT(paymentsTrainYes)[, .N, by = Product_Type_1][order(-N)]
+ProductTypeYes2 <- setDT(paymentsTrainYes)[, .N, by = Product_Type_2][order(-N)]
+ProductTypeYes3 <- setDT(paymentsTrainYes)[, .N, by = Product_Type_3][order(-N)]
+
+#States
+PhysisicianStateAll1 <- setDT(trainPhysicians)[, .N, by = State][order(-N)]
+PhysisicianStateYes1 <- setDT(trainPhysiciansYes)[, .N, by = State][order(-N)]
+
+CompanyStateAll1 <- setDT(companies)[, .N, by = State][order(-N)]
+CompanyStateYes1 <- setDT(trainPhysiciansYes)[, .N, by = State][order(-N)]
+
+#City
+PhysisicianCityAll1 <- setDT(trainPhysicians)[, .N, by = City][order(-N)]
+PhysisicianCityYes1 <- setDT(trainPhysiciansYes)[, .N, by = City][order(-N)]
+#ZIP
+PhysisicianZIPAll1 <- setDT(trainPhysicians)[, .N, by = Zipcode][order(-N)]
+PhysisicianZIPYes1 <- setDT(trainPhysiciansYes)[, .N, by = Zipcode][order(-N)]
+#Licence State
+PhysisicianLicenseStateAll1 <- setDT(trainPhysicians)[, .N, by = License_State_1][order(-N)]
+PhysisicianLicenseStateYes1 <- setDT(trainPhysiciansYes)[, .N, by = License_State_1][order(-N)]
+
+PhysisicianLicenseStateAll1Freque <-PhysisicianLicenseStateAll1
+PhysisicianLicenseStateAll1Freque$N <- as.numeric(PhysisicianLicenseStateAll1Freque$N)/ NROW(trainPhysicians)
+PhysisicianLicenseStateYes1Freque <-PhysisicianLicenseStateYes1
+PhysisicianLicenseStateYes1Freque$N <- as.numeric(PhysisicianLicenseStateYes1Freque$N)/ NROW(trainPhysiciansYes)
+
+
+NROW(paymentsTrainYes)
