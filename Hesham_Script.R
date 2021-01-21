@@ -12,19 +12,28 @@ dim(payments)
 
 companies <- subset(companies, select = -c(Country)) # For removing countries column
 payments_testxxx <- payments
-payments_testxxx$new_column_year <- substring(payments$Date,7,10)
+payments_testxxx$new_column_year <- substring(payments$Date,7,10) # Adding new year column.
 
-# swfun <- function(x) {
-#   switch(x,
-#          ('01' | '02' | '03') = 'JS',
-#          ('04' | '05' | '06') = 'TR',
-#          ('07' | '08' | '09') = 'SF',
-#          ('10' | '11' | '12') = 'SF',
-#          as.character(x)
-#   )
-# }
-# unname(sapply(substring(payments$Date,4,5), swfun))
-
+# SWITCH CASE FOR GETTING SEASONS.
+swfun <- function(x) {
+  switch(x,
+         '12' = 'Winter',
+         '01' = 'Winter',
+         '02' = 'Winter',
+         '03' = 'Spring',
+         '04' = 'Spring',
+         '05' = 'Spring',
+         '06' = 'Summer',
+         '07' = 'Summer',
+         '08' = 'Summer',
+         '09' = 'Fall',
+         '10' = 'Fall',
+         '11' = 'Fall',
+         as.character(x)
+  )
+}
+payments_testxxx$new_column_season <- sapply(substring(payments$Date,4,5), swfun) # this is for creating a new column with different seasons.
+payments_testxxx <- subset(payments_testxxx, select = -c(Date)) # This is for removing Date column
 #switch(substring(payments$Date,4,5), "01"={"one"}, bar={"two"})
 trainPhysicians <- physicians[physicians$set == 'train', ]
 testPhysicians <- physicians[physicians$set == 'test', ]
