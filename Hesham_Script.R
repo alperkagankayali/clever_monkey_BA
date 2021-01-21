@@ -1,4 +1,5 @@
 library(tidyverse)
+library(tidymodels)
 
 set.seed(2021)
 companies <- read.csv("companies.csv")
@@ -9,6 +10,22 @@ previously_released_payments <- read.csv("previously_released_payments.csv")
 dim(physicians)
 dim(payments)
 
+companies <- subset(companies, select = -c(Country)) # For removing countries column
+payments_testxxx <- payments
+payments_testxxx$new_column_year <- substring(payments$Date,7,10)
+
+# swfun <- function(x) {
+#   switch(x,
+#          ('01' | '02' | '03') = 'JS',
+#          ('04' | '05' | '06') = 'TR',
+#          ('07' | '08' | '09') = 'SF',
+#          ('10' | '11' | '12') = 'SF',
+#          as.character(x)
+#   )
+# }
+# unname(sapply(substring(payments$Date,4,5), swfun))
+
+#switch(substring(payments$Date,4,5), "01"={"one"}, bar={"two"})
 trainPhysicians <- physicians[physicians$set == 'train', ]
 testPhysicians <- physicians[physicians$set == 'test', ]
 ## all = TRUE removed to not join missing rows from both tables with NA (Full

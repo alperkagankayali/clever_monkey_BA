@@ -20,6 +20,6 @@ Product_Category(Remaining)
 Deal with imbalancing either with oversampling or penalization with weight. We need to check whether decision tree deals with imbalanced data.(Remaining.)
 Converge states into regions or divisions(Remaining.)
 Convert Date into Year and Season(Remaining.)
-Remove countries from companies dataset(Remaining.)
-Put label "Other" instead of null values in company state column(Remaining.)
+Remove countries from companies dataset(Done.)
+Put label "Other" instead of null values in company state column(Done.)
 
