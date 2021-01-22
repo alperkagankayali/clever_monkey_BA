@@ -1,7 +1,6 @@
 library(tidyverse)
 library(tidymodels)
-#install.packages("data.table")
-library(data.table)
+
 
 set.seed(2021)
 companies <- read.csv("companies.csv")
