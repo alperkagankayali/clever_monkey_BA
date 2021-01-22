@@ -1,5 +1,7 @@
 library(tidyverse)
 library(tidymodels)
+#install.packages("data.table")
+library(data.table)
 
 set.seed(2021)
 companies <- read.csv("companies.csv")
@@ -188,6 +190,15 @@ NROW(subset(payments_exp, is.na(Product_Category_3)))/NROW(payments_exp) # 88%
 
 unique(payments_exp$Product_Category_1)
 summary(payments_exp$Product_Category_1)
+
+#Product_Category_1,2,3 checking and if NEUROLOGY then TRUE
+payments_exp$Product_Category_1[is.na(payments_exp$Product_Category_1)]<- "Other"
+payments_exp$Product_Category_2[is.na(payments_exp$Product_Category_2)]<- "Other"
+payments_exp$Product_Category_3[is.na(payments_exp$Product_Category_3)]<- "Other"
+payments_exp$NC_PC_Is_NEUROLOGY <- ifelse((payments_exp$Product_Category_1=="NEUROLOGY"|payments_exp$Product_Category_2=="NEUROLOGY"|payments_exp$Product_Category_3=="NEUROLOGY"), TRUE, FALSE)
+#Deleting Product Categories
+payments_exp <- subset(payments_exp, select = -c(Product_Category_1,Product_Category_2,Product_Category_3))
+
 
 ##### COMPANIES TABLE #####
 ## State
