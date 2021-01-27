@@ -88,7 +88,7 @@ summary(physicians_ML)
 
 
 ## Physicians Primary Speciality
-#Product_Category_1,2,3 checking and if NEUROLOGY then TRUE
+#Physicians Primary Speciality checking and if NEUROLOGY then TRUE
 physicians$Primary_Specialty[is.na(physicians$Primary_Specialty)]<- "Other"
 physicians$PS_Neurology <- ifelse((physicians$Primary_Specialty=="Chiropractic Providers|Chiropractor|Neurology"|physicians$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Psychiatry"|physicians$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neuromuscular Medicine"|physicians$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neurology"|physicians$Primary_Specialty=="Allopathic & Osteopathic Physicians|Neurological Surgery"|physicians$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neuromuscular Medicine"|physicians$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Psychiatry"|physicians$Primary_Specialty=="Chiropractic Providers|Chiropractor|Neurology"|physicians$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neurology with Special Qualifications in Child Neurology"), TRUE, FALSE)
 

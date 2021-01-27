@@ -143,6 +143,11 @@ levels(physicians_primary_spec_1$Primary_Specialty) # 5 levels
 
 physicians_exp <- physicians_primary_spec_1
 
+## Physicians Primary Speciality
+#Physicians Primary Speciality checking and if NEUROLOGY then TRUE
+physicians_exp$Primary_Specialty[is.na(physicians_exp$Primary_Specialty)]<- "Other"
+physicians_exp$PS_Neurology <- ifelse((physicians_exp$Primary_Specialty=="Chiropractic Providers|Chiropractor|Neurology"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Psychiatry"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neuromuscular Medicine"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neurology"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Neurological Surgery"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neuromuscular Medicine"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Psychiatry"|physicians_exp$Primary_Specialty=="Chiropractic Providers|Chiropractor|Neurology"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neurology with Special Qualifications in Child Neurology"), TRUE, FALSE)
+
 
 ## ZIP CODE COL (?)
 # could be removed.
