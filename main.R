@@ -1,5 +1,9 @@
 library(tidyverse)
 library(ggplot2)
+#install.packages("tree")
+library(tree)
+library(caTools)
+library(dplyr)
 
 set.seed(2021)
 companies <- read.csv("companies.csv")
@@ -10,12 +14,25 @@ previously_released_payments <- read.csv("previously_released_payments.csv")
 dim(physicians)
 dim(payments)
 trainPhysicians <- physicians[physicians$set == 'train', ]
-trainPayments <- merge(x = trainPhysicians, y = payments_exp, by.x = "id", by.y = "Physician_ID")
+trainPayments <- merge(x = trainPhysicians, y = payments, by.x = "id", by.y = "Physician_ID")
 finalTableTrain <- merge(x = trainPayments, y = companies, 
                          by.x = "Company_ID", by.y = "Company_ID")
+summary(payments)
 
-companies$State[is.na(companies$State)] <- "Other"
+subset(finalTableTrain, !is.na(Charity))
+subset(payments, is.na(Ownership_Indicator))
+
+payments$Ownership_Indicator <- as.factor(payments$Ownership_Indicator)
+o_t <- glm(as.factor(Ownership_Indicator) ~ as.factor(Charity), 
+           data = subset(finalTableTrain, !is.na(Charity)), family = "binomial")
+#Yes level in Charity factor has e(-7.7) relative ownership indicator rate 
+# and is highly insignificant (p>0.001).
+summary(o_t)
 #### Graphs #####
+
+ggplot(finalTableTrain, aes(x=as.factor(Ownership_Indicator), y = as.factor(Charity))) + 
+  geom_point() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 2))
 ## State
 ggplot(trainPayments, aes(x=State, fill = factor(Ownership_Indicator))) + 
   geom_bar(position = "fill") + 
@@ -36,7 +53,6 @@ ggplot(finalTableTrain, aes(x=Country.y)) +
 
 ##### PHYSICIAN TABLE #####
 physicians_exp <- physicians
-
 physicians_exp %>% as_tibble()
 ### CITY COL
 # This col has too many factors and therefore either removed or catagorized more.
@@ -80,7 +96,7 @@ physicians_exp <- physicians_exp %>%
     License_State == "AK" | License_State == "CA" | 
       License_State == "HI" | License_State == "OR" |
       License_State == "WA" ~ "W_2",
-    TRUE ~ "Other"
+    TRUE ~ "Other State"
   )) %>%
   select(-c(License_State))
 physicians_exp$License_State_Dir <- as.factor(physicians_exp$License_State_Dir)
@@ -133,30 +149,34 @@ levels(physicians_exp$Primary_Specialty_3) # 117
 # also this col has around 150 117.
 # consider leaving Primary_Specialty_1 and Primary_Specialty_2 only or just 1.
 
-physicians_exp <- subset(physicians_exp, select =-c(Primary_Specialty))
+NROW(subset(physicians_exp, is.na(Primary_Specialty_1)))/NROW(physicians_exp) # 0.04%
+phys_reduced <- subset(physicians_exp, !is.na(Primary_Specialty_1) && set != "test", 
+                       select=-c(Primary_Specialty_2, Primary_Specialty_3))
+names(phys_reduced)[names(phys_reduced) == "Primary_Specialty_1"] <- "Primary_Specialty"
+physicians_exp <- phys_reduced
+
 ## POSSIBLIE SOLUTION: LONGER PIVOT
 ## PROBLEM: if a physician have multiple license states and multiple specs.
 #, it will be seen as if he is specialized in this field in this license state,
 # not specialized in this field in general. (?)
-physicians_primary_spec_exp <- physicians_exp %>% 
-  pivot_longer(c('Primary_Specialty_3', 'Primary_Specialty_2', 'Primary_Specialty_1'), 
-               values_to ='Primary_Specialty', names_repair = "unique")
-physicians_primary_spec_exp <- subset(physicians_exp, !is.na(physicians_exp$Primary_Specialty), select = -c(name))
-dim(physicians_primary_spec_exp)
-physicians_primary_spec_exp$Primary_Specialty <- as.factor(physicians_exp$Primary_Specialty)
-levels(physicians_primary_spec_exp$Primary_Specialty) # 154 levels
+#physicians_primary_spec_exp <- physicians_exp %>% 
+#  pivot_longer(c('Primary_Specialty_3', 'Primary_Specialty_2', 'Primary_Specialty_1'), 
+#               values_to ='Primary_Specialty', names_repair = "unique")
+#physicians_primary_spec_exp <- subset(physicians_exp, !is.na(physicians_exp$Primary_Specialty), select = -c(name))
+#dim(physicians_primary_spec_exp)
+#physicians_primary_spec_exp$Primary_Specialty <- as.factor(physicians_exp$Primary_Specialty)
+#levels(physicians_primary_spec_exp$Primary_Specialty) # 154 levels
 
 ## SOLUTION 2:
 # REMOVING Primary_Specialty_2 and Primary_Specialty_3.
 # PRO: LESS SPECIFIC VALUES.
 # CON: LESS VALUES IN GENERAL.
-physicians_primary_spec_1 <- subset(physicians_exp, select = -c(Primary_Specialty_2, Primary_Specialty_3))
-dim(physicians_primary_spec_1)
-physicians_primary_spec_1$Primary_Specialty <- as.factor(physicians_exp$Primary_Specialty_1)
-physicians_primary_spec_1 <- select(physicians_primary_spec_1, -c("Primary_Specialty_1"))
-levels(physicians_primary_spec_1$Primary_Specialty) # 5 levels
-
-physicians_exp <- physicians_primary_spec_1
+#physicians_primary_spec_1 <- subset(physicians_exp, select = -c(Primary_Specialty_2, Primary_Specialty_3))
+#dim(physicians_primary_spec_1)
+#physicians_primary_spec_1$Primary_Specialty <- as.factor(physicians_exp$Primary_Specialty_1)
+#physicians_primary_spec_1 <- select(physicians_primary_spec_1, -c("Primary_Specialty_1"))
+#levels(physicians_primary_spec_1$Primary_Specialty) # 5 levels
+#physicians_exp <- physicians_primary_spec_1
 
 
 
@@ -195,7 +215,7 @@ physicians_exp <- physicians_exp %>%
     State == "AK" | State == "CA" | 
       State == "HI" | State == "OR" |
       State == "WA" ~ "W_2",
-    TRUE ~ "Other"
+    TRUE ~ "Other State"
   )) %>%
   select(-c(State))
 physicians_exp$State_Dir <- as.factor(physicians_exp$State_Dir)
@@ -204,14 +224,18 @@ physicians_exp$State_Dir <- as.factor(physicians_exp$State_Dir)
 # all from US > remove
 physicians_exp <- subset(physicians_exp, select = -c(Country))
 
-physicians_ML <- physicians_exp %>% select(-contains("Name"))
+## REMOVING NULLS
+summary(physicians_exp)
+subset(physicians_exp, State_Dir == "Other State")
+physicians_exp <- subset(physicians_exp, State_Dir != "Other State")
+#physicians_exp <- subset(physicians_exp, Country != "UNITED STATES MINOR OUTLYING ISLANDS")
 
+physicians_ML <- physicians_exp %>% select(-contains("Name"))
 summary(physicians_ML)
 ## 2 NA State, 2 "UNITED STATES MINOR OUTLYING ISLANDS" in Country.
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##### PAYEMENTS TABLE #####
 payments_exp <- payments %>% as_tibble()
-
 
 ## DATE
 payments_testxxx <- payments_exp
@@ -235,7 +259,7 @@ swfun <- function(x) {
          as.character(x)
   )
 }
-payments_testxxx$new_column_season <- sapply(substring(payments_exp$Date,4,5), swfun) # this is for creating a new column with different seasons.
+payments_testxxx$new_column_season <- sapply(substring(payments_exp$Date,0, 1), swfun) # this is for creating a new column with different seasons.
 payments_testxxx <- subset(payments_testxxx, select = -c(Date)) # This is for removing Date column
 payments_exp <- payments_testxxx
 
@@ -247,7 +271,7 @@ subset(payments_exp, Number_of_Payments == 3)[order(payments_exp$Company_ID), ]
 ## Form_of_Payment_or_Transfer_of_Value
 # TODO: FIX
 unique(payments_exp$Form_of_Payment_or_Transfer_of_Value)
-form_of_pay_col <- payments_exp$Form_of_Payment_or_Transfer_of_Value
+form_of_pay_col <- as.factor(payments_exp$Form_of_Payment_or_Transfer_of_Value)
 summary(form_of_pay_col)
 levels(form_of_pay_col)[
   levels(form_of_pay_col)=="Stock, stock option, or any other ownership interest"
@@ -259,6 +283,8 @@ levels(form_of_pay_col)[
 unique(form_of_pay_col)
 summary(form_of_pay_col)
 NROW(subset(payments_exp, is.na(form_of_pay_col)))
+payments_exp$Form_of_Payment_or_Transfer_of_Value <- form_of_pay_col
+summary(payments_exp$Form_of_Payment_or_Transfer_of_Value)
 
 ## Nature_of_Payment_or_Transfer_of_Value
 nature_of_pay_travel <- subset(payments_exp, Nature_of_Payment_or_Transfer_of_Value == 
@@ -321,10 +347,10 @@ NROW(subset(payments_exp, is.na(Product_Category_1)))/NROW(payments_exp) # 41%
 NROW(subset(payments_exp, is.na(Product_Category_2)))/NROW(payments_exp) # 87%
 NROW(subset(payments_exp, is.na(Product_Category_3)))/NROW(payments_exp) # 95%
 
-payments_exp <- payments_exp %>%
-  pivot_longer(c('Product_Type_1', 'Product_Type_2', 'Product_Type_3'), 
-             values_to ='Product_Type', names_repair = "unique")
-payments_exp <- subset(payments_exp, !is.na(payments_exp$Product_Type), select = -c(name))
+# payments_exp <- payments_exp %>%
+#   pivot_longer(c('Product_Type_1', 'Product_Type_2', 'Product_Type_3'), 
+#              values_to ='Product_Type', names_repair = "unique")
+# payments_exp <- subset(payments_exp, !is.na(payments_exp$Product_Type), select = -c(name))
 #payments_exp <- payments_exp %>%
 #  pivot_longer(c('Product_Category_1', 'Product_Category_2', 'Product_Category_3'), 
 #               values_to ='Product_Category', names_repair = "unique")
@@ -332,9 +358,9 @@ payments_exp <- subset(payments_exp, !is.na(payments_exp$Product_Type), select =
 
 # (?) how to proceed with categories?
 # naive solution: removing all the three columns (?)
-payments_exp <- select(payments_exp, -c("Product_Category_1", 
-                                        "Product_Category_2",
-                                       "Product_Category_3"))
+# payments_exp <- select(payments_exp, -c("Product_Category_1", 
+#                                         "Product_Category_2",
+#                                        "Product_Category_3"))
 
 # solution 2: removing Product_Category_2 and Product_Category_3 and keeping 
 # only Product_Category_1. Also, removing rows with null values of category
@@ -345,12 +371,35 @@ payments_exp <- select(payments_exp, -c("Product_Category_1",
 unique(payments_exp$Product_Category_1)
 summary(payments_exp$Product_Category_1)
 
+#Product_Category_1,2,3 checking and if NEUROLOGY then TRUE
+payments_exp$Product_Category_1[is.na(payments_exp$Product_Category_1)]<- "Other"
+payments_exp$Product_Category_2[is.na(payments_exp$Product_Category_2)]<- "Other"
+payments_exp$Product_Category_3[is.na(payments_exp$Product_Category_3)]<- "Other"
+payments_exp$NC_PC_Is_NEUROLOGY <- ifelse((payments_exp$Product_Category_1=="NEUROLOGY"|payments_exp$Product_Category_2=="NEUROLOGY"|payments_exp$Product_Category_3=="NEUROLOGY"), TRUE, FALSE)
+#Deleting Product Categories
+payments_exp <- subset(payments_exp, select = -c(Product_Category_1,Product_Category_2,Product_Category_3))
+
+NROW(subset(payments_exp, is.na(Product_Type_1)))/NROW(payments_exp) # 0.04%
+pay_reduced <- subset(payments_exp, !is.na(Product_Type_1), 
+                       select=-c(Product_Type_2, Product_Type_3))
+names(pay_reduced)[names(pay_reduced) == "Product_Type_1"] <- "Product_Type"
+payments_exp <- pay_reduced
+
 #Related Product indicator converted to yeses and nos.
 payments_exp$Related_Product_Indicator[payments_exp$Related_Product_Indicator == 'Covered' 
                                        | payments_exp$Related_Product_Indicator == 'Combination' 
                                        | payments_exp$Related_Product_Indicator == 'Non-Covered'] <- 'Yes'
 payments_exp$Related_Product_Indicator[payments_exp$Related_Product_Indicator == 'None'] <- 'No'
 
+payements_ML <- subset(payments_exp, select=-c(Record_ID))
+payements_ML$Nature_of_Payment_or_Transfer_of_Value <- as.factor(payements_ML$Nature_of_Payment_or_Transfer_of_Value)
+payements_ML$Third_Party_Recipient <- as.factor(payements_ML$Third_Party_Recipient)
+payements_ML$Related_Product_Indicator <- as.factor(payements_ML$Related_Product_Indicator)
+payements_ML$Ownership_Indicator <- as.factor(payements_ML$Ownership_Indicator)
+payements_ML$Product_Type <- as.factor(payements_ML$Product_Type)
+payements_ML$new_column_year <- as.factor(payements_ML$new_column_year)
+payements_ML$new_column_season <- as.factor(payements_ML$new_column_season)
+summary(payements_ML)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##### COMPANIES TABLE #####
 ## State
@@ -383,41 +432,101 @@ companies_exp <- companies_exp %>%
       State == "UT" | State == "WY" ~ "W_1",
     State == "AK" | State == "CA" | 
       State == "HI" | State == "OR" |
-      State == "WA" ~ "W_2"
+      State == "WA" ~ "W_2",
+      TRUE ~ "Other"
   ))
 companies_exp$Company_State_Dir <- as.factor(companies_exp$Company_State_Dir)
+companies_exp <- subset(companies_exp, select = -c(Name, Country, State))
+companies_ML <- companies_exp
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #### JOIN ####
 
-summary(companies_exp)
-summary(payments_exp)
+summary(companies_ML)
+summary(payements_ML)
 summary(physicians_ML)
 
 trainPhysicians <- physicians_ML[physicians_ML$set == 'train', ]
 testPhysicians <- physicians_ML[physicians_ML$set == 'test', ]
+
+spl = sample.split(trainPhysicians$id, SplitRatio = 0.8) 
+train = subset(trainPhysicians, spl == TRUE) 
+val = subset(trainPhysicians, spl == FALSE) 
+
 ## all = TRUE removed to not join missing rows from both tables with NA (Full
 # Outer Join).
-trainPayments <- merge(x = trainPhysicians, y = payments_exp, by.x = "id", by.y = "Physician_ID")
+trainPayments <- merge(x = trainPhysicians, y = payements_ML, by.x = "id", by.y = "Physician_ID")
 dim(trainPayments) # 5 mio.?
-testPayments <- merge(x = testPhysicians, y = payments_exp, by.x = "id", by.y = "Physician_ID")
+valPayments <- merge(x = val, y = payements_ML, by.x = "id", by.y = "Physician_ID")
+dim(trainPayments) # 5 mio.?
+testPayments <- merge(x = testPhysicians, y = payements_ML, by.x = "id", by.y = "Physician_ID")
 dim(testPayments)
 summary(trainPayments)
 
-finalTableTrain <- merge(x = trainPayments, y = companies_exp, 
+finalTableTrain <- merge(x = trainPayments, y = companies_ML, 
                          by.x = "Company_ID", by.y = "Company_ID")
-finalTableTest <- merge(x = testPayments, y = companies_exp, 
+finalTableTest <- merge(x = testPayments, y = companies_ML, 
                          by.x = "Company_ID", by.y = "Company_ID")
+finalTableVal <- merge(x = valPayments, y = companies_ML, 
+                        by.x = "Company_ID", by.y = "Company_ID")
 
-finalTableTrain <- select(finalTableTrain, -c("set"))
-finalTableTest <- select(finalTableTest, -c("set"))
+ids_test <- select(finalTableTest, c("id"))
+ids_val <-  select(finalTableVal, c("id"))
+finalTableTest_grped <- finalTableTest %>% 
+                      group_by(id) %>%
+                      summarise(oi = max(as.numeric(Ownership_Indicator)))
+
+val_grouped_by_id <- finalTableVal %>% 
+  group_by(id) %>%
+  summarise(oi = max(as.numeric(Ownership_Indicator)))
+
+val_grouped_by_id$oi <- val_grouped_by_id$oi - 1
+finalTableTest_grped$oi <- finalTableTest_grped$oi - 1
+
+finalTableTrain <- select(finalTableTrain, -c("set", "id", "Company_ID"))
+
+finalTableTest <- select(finalTableTest, -c("set", "id", "Company_ID"))
+
+finalTableVal <- select(finalTableVal, -c("set", "id", "Company_ID"))
+
 summary(finalTableTrain)
-
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #### CLASSIFICATION ####
-#install.packages("tree")
-library(tree)
 
 tree.pay = tree(Ownership_Indicator~., data=finalTableTrain)
+tree.pred = predict(tree.pay, finalTableTest, type="class")
+
+preds <- cbind(ids, tree.pred)
+colnames(preds) <- c("id", "prediction")
+preds$prediction <- as.numeric(preds$prediction) -1
+
+summary(preds)
+
+grouped_date <- preds %>% 
+                group_by(id) %>%
+                summarise(max = max(prediction))
+
+grouped_date$max <- as.factor(grouped_date$max)
+colnames(grouped_date) <- c("id", "prediction")
+summary(grouped_date)
+
+print(tree.pred)
+
+summary(tree.pred)
+
+summary(finalTableTest_grped$oi)
+
+NROW(finalTableTest_grped$oi)
+NROW(tree.pred)
+table(grouped_date$prediction, finalTableTest_grped$oi)
+
+summary(tree.pay)
+
+## GLM
+
+logistic <- glm(Ownership_Indicator ~ ., 
+           data = finalTableTrain, family = "binomial")
+write.csv(grouped_date,"submit.csv", row.names = FALSE)
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #### OTHER ANALYSIS ####
 #### PHYS NOT FROM US 
