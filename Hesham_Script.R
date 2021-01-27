@@ -85,6 +85,14 @@ physicians <- subset(physicians, select = -c(Province))
 physicians_ML <- physicians %>% select(-contains("Name"))
 
 summary(physicians_ML)
+
+
+## Physicians Primary Speciality
+#Product_Category_1,2,3 checking and if NEUROLOGY then TRUE
+physicians$Primary_Specialty[is.na(physicians$Primary_Specialty)]<- "Other"
+physicians$PS_Neurology <- ifelse((physicians$Primary_Specialty=="Chiropractic Providers|Chiropractor|Neurology"|physicians$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Psychiatry"|physicians$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neuromuscular Medicine"|physicians$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neurology"|physicians$Primary_Specialty=="Allopathic & Osteopathic Physicians|Neurological Surgery"|physicians$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neuromuscular Medicine"|physicians$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Psychiatry"|physicians$Primary_Specialty=="Chiropractic Providers|Chiropractor|Neurology"|physicians$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neurology with Special Qualifications in Child Neurology"), TRUE, FALSE)
+
+
 ## 2 NA State, 2 "UNITED STATES MINOR OUTLYING ISLANDS" in Country.
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##### PAYEMENTS TABLE #####
@@ -198,6 +206,8 @@ payments_exp$NC_PC_Is_NEUROLOGY <- ifelse((payments_exp$Product_Category_1=="NEU
 #Deleting Product Categories
 payments_exp <- subset(payments_exp, select = -c(Product_Category_1,Product_Category_2,Product_Category_3))
 
+#Deleting Product Categories
+payments_exp <- subset(payments_exp, select = -c(Product_Category_1,Product_Category_2,Product_Category_3))
 
 ##### COMPANIES TABLE #####
 ## State
