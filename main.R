@@ -106,12 +106,26 @@ for (row in 1: NROW(physicians_exp)){
     physicians_exp[row, col_name] <- split[i]
   }
 }
-physicians_exp <- subset(physicians_exp, select =-c(Primary_Specialty))
+## Physicians Primary Speciality
+#Physicians Primary Speciality checking and if NEUROLOGY then TRUE
+physicians_exp$Primary_Specialty[is.na(physicians_exp$Primary_Specialty)]<- "Other"
+
+physicians_exp$Primary_Specialty_1[is.na(physicians_exp$Primary_Specialty_1)]<- "Other"
+physicians_exp$Primary_Specialty_2[is.na(physicians_exp$Primary_Specialty_2)]<- "Other"
+physicians_exp$Primary_Specialty_3[is.na(physicians_exp$Primary_Specialty_3)]<- "Other"
+
+physicians_exp$PS_Neurology <- ifelse((physicians_exp$Primary_Specialty=="Chiropractic Providers|Chiropractor|Neurology"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Psychiatry"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neuromuscular Medicine"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neurology"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Neurological Surgery"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neuromuscular Medicine"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Psychiatry"|physicians_exp$Primary_Specialty=="Chiropractic Providers|Chiropractor|Neurology"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neurology with Special Qualifications in Child Neurology"| physicians_exp$Primary_Specialty_1=="Neurology"|physicians_exp$Primary_Specialty_1=="Psychiatry & Neurology"|physicians_exp$Primary_Specialty_2=="Neurology"|physicians_exp$Primary_Specialty_2=="Psychiatry & Neurology"|physicians_exp$Primary_Specialty_3=="Neurology"|physicians_exp$Primary_Specialty_3=="Psychiatry & Neurology"), TRUE, FALSE)
+
+
+
+count(physicians_exp, PS_Neurology == TRUE)
+
+
+glimpse(physicians_exp)
+summary(physicians_exp)
 physicians_exp$Primary_Specialty_1 <- as.factor(physicians_exp$Primary_Specialty_1)
 physicians_exp$Primary_Specialty_2 <- as.factor(physicians_exp$Primary_Specialty_2)
 physicians_exp$Primary_Specialty_3 <- as.factor(physicians_exp$Primary_Specialty_3)
-glimpse(physicians_exp)
-summary(physicians_exp)
 levels(physicians_exp$Primary_Specialty_1) #5
 levels(physicians_exp$Primary_Specialty_2) #35
 levels(physicians_exp$Primary_Specialty_3) # 117
@@ -119,6 +133,7 @@ levels(physicians_exp$Primary_Specialty_3) # 117
 # also this col has around 150 117.
 # consider leaving Primary_Specialty_1 and Primary_Specialty_2 only or just 1.
 
+physicians_exp <- subset(physicians_exp, select =-c(Primary_Specialty))
 ## POSSIBLIE SOLUTION: LONGER PIVOT
 ## PROBLEM: if a physician have multiple license states and multiple specs.
 #, it will be seen as if he is specialized in this field in this license state,
@@ -143,10 +158,6 @@ levels(physicians_primary_spec_1$Primary_Specialty) # 5 levels
 
 physicians_exp <- physicians_primary_spec_1
 
-## Physicians Primary Speciality
-#Physicians Primary Speciality checking and if NEUROLOGY then TRUE
-physicians_exp$Primary_Specialty[is.na(physicians_exp$Primary_Specialty)]<- "Other"
-physicians_exp$PS_Neurology <- ifelse((physicians_exp$Primary_Specialty=="Chiropractic Providers|Chiropractor|Neurology"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Psychiatry"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neuromuscular Medicine"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neurology"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Neurological Surgery"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neuromuscular Medicine"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Psychiatry"|physicians_exp$Primary_Specialty=="Chiropractic Providers|Chiropractor|Neurology"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neurology with Special Qualifications in Child Neurology"), TRUE, FALSE)
 
 
 ## ZIP CODE COL (?)
