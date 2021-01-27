@@ -3,7 +3,20 @@ library(ggplot2)
 #install.packages("tree")
 library(tree)
 library(caTools)
-library(dplyr)
+#install.packages("party")
+library(party)
+library(randomForest)
+#install.packages("gbm")
+library(gbm)
+#require(xgboost)
+#install.packages("xgboost")
+library(xgboost)
+
+#install.packages("unix") 
+#library(unix)
+#rlimit_as(1e12)  #increases to ~12GB
+
+#memory.limit(size=3000)
 
 set.seed(2021)
 companies <- read.csv("companies.csv")
@@ -28,6 +41,7 @@ o_t <- glm(as.factor(Ownership_Indicator) ~ as.factor(Charity),
 #Yes level in Charity factor has e(-7.7) relative ownership indicator rate 
 # and is highly insignificant (p>0.001).
 summary(o_t)
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #### Graphs #####
 
 ggplot(finalTableTrain, aes(x=as.factor(Ownership_Indicator), y = as.factor(Charity))) + 
@@ -51,13 +65,14 @@ ggplot(finalTableTrain, aes(x=Country.y)) +
   geom_bar() + 
   theme(axis.text.x = element_text(angle = 45))
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##### PHYSICIAN TABLE #####
 physicians_exp <- physicians
 physicians_exp %>% as_tibble()
 ### CITY COL
 # This col has too many factors and therefore either removed or catagorized more.
 NROW(unique(physicians_exp$City))
-physicians_exp <- select(physicians_exp, -c("City"))
+physicians_exp <- dplyr::select(physicians_exp, -c("City"))
 
 ### LICENSE STATE COL
 # instead of having 5 cols, we are going to have one col (license state)
@@ -98,7 +113,7 @@ physicians_exp <- physicians_exp %>%
       License_State == "WA" ~ "W_2",
     TRUE ~ "Other State"
   )) %>%
-  select(-c(License_State))
+  dplyr::select(-c(License_State))
 physicians_exp$License_State_Dir <- as.factor(physicians_exp$License_State_Dir)
 
 ### PS COL
@@ -132,9 +147,9 @@ physicians_exp$Primary_Specialty_3[is.na(physicians_exp$Primary_Specialty_3)]<- 
 
 physicians_exp$PS_Neurology <- ifelse((physicians_exp$Primary_Specialty=="Chiropractic Providers|Chiropractor|Neurology"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Psychiatry"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neuromuscular Medicine"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neurology"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Neurological Surgery"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neuromuscular Medicine"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Psychiatry"|physicians_exp$Primary_Specialty=="Chiropractic Providers|Chiropractor|Neurology"|physicians_exp$Primary_Specialty=="Allopathic & Osteopathic Physicians|Psychiatry & Neurology|Neurology with Special Qualifications in Child Neurology"| physicians_exp$Primary_Specialty_1=="Neurology"|physicians_exp$Primary_Specialty_1=="Psychiatry & Neurology"|physicians_exp$Primary_Specialty_2=="Neurology"|physicians_exp$Primary_Specialty_2=="Psychiatry & Neurology"|physicians_exp$Primary_Specialty_3=="Neurology"|physicians_exp$Primary_Specialty_3=="Psychiatry & Neurology"), TRUE, FALSE)
 
-
-
 count(physicians_exp, PS_Neurology == TRUE)
+
+physicians_exp <- dplyr::select(physicians_exp, select = -c("Primary_Specialty"))
 
 
 glimpse(physicians_exp)
@@ -182,7 +197,7 @@ physicians_exp <- phys_reduced
 
 ## ZIP CODE COL (?)
 # could be removed.
-physicians_exp <- select(physicians_exp, -c("Zipcode"))
+physicians_exp <- dplyr::select(physicians_exp, -c("Zipcode"))
 
 ## PROVINCE COL
 physicians_exp <- subset(physicians_exp, select = -c(Province))
@@ -217,7 +232,7 @@ physicians_exp <- physicians_exp %>%
       State == "WA" ~ "W_2",
     TRUE ~ "Other State"
   )) %>%
-  select(-c(State))
+  dplyr::select(-c(State))
 physicians_exp$State_Dir <- as.factor(physicians_exp$State_Dir)
 
 ## COUNTRY COL
@@ -230,8 +245,9 @@ subset(physicians_exp, State_Dir == "Other State")
 physicians_exp <- subset(physicians_exp, State_Dir != "Other State")
 #physicians_exp <- subset(physicians_exp, Country != "UNITED STATES MINOR OUTLYING ISLANDS")
 
-physicians_ML <- physicians_exp %>% select(-contains("Name"))
+physicians_ML <- physicians_exp %>% dplyr::select(-contains("Name"))
 summary(physicians_ML)
+physicians_ML$PS_Neurology <- as.factor(physicians_ML$PS_Neurology)
 ## 2 NA State, 2 "UNITED STATES MINOR OUTLYING ISLANDS" in Country.
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##### PAYEMENTS TABLE #####
@@ -293,7 +309,7 @@ NROW(nature_of_pay_travel)
 # Since there are only 75179 rows with Travel and Lodging (very low number),
 # the cols (City_of_Travel, State_of_Travel and Country_of_Travel)
 # will be removed
-payments_exp <- select(payments_exp, -c("City_of_Travel", "State_of_Travel", "Country_of_Travel"))
+payments_exp <- dplyr::select(payments_exp, -c("City_of_Travel", "State_of_Travel", "Country_of_Travel"))
 
 ## Ownership_Indicator
 unique(payments_exp$Ownership_Indicator)
@@ -321,22 +337,22 @@ NROW(no_charity) ## 767502
 ## 26 out of 27 yeses has Entity in Third_Party_Recipient
 ## while this is could be a good corr., I don't think we can use the col
 # due to the low number of not null observations and also the huge of No's.
-payments_exp <- select(payments_exp, -c("Charity"))
+payments_exp <- dplyr::select(payments_exp, -c("Charity"))
 # should it be kept (?)
 
 ## Third_Party_Covered
 # lots of nulls and included in Third_Party_Recipient
-payments_exp <- select(payments_exp, -c("Third_Party_Covered"))
+payments_exp <- dplyr::select(payments_exp, -c("Third_Party_Covered"))
 
 ## Contextual Info. 
 # hard to get any data from it, therefore removed.
-payments_exp <- select(payments_exp, -c("Contextual_Information"))
+payments_exp <- dplyr::select(payments_exp, -c("Contextual_Information"))
 
 ## PRODUCT
 
 # Names and codes will be removed.
-payments_exp <- payments_exp %>% select(-contains("Name"))
-payments_exp <- payments_exp %>% select(-contains("Code"))
+payments_exp <- payments_exp %>% dplyr::select(-contains("Name"))
+payments_exp <- payments_exp %>% dplyr::select(-contains("Code"))
 
 # pivot product type and category to rows.
 NROW(subset(payments_exp, is.na(Product_Type_1)))/NROW(payments_exp) # 0.06%
@@ -358,7 +374,7 @@ NROW(subset(payments_exp, is.na(Product_Category_3)))/NROW(payments_exp) # 95%
 
 # (?) how to proceed with categories?
 # naive solution: removing all the three columns (?)
-# payments_exp <- select(payments_exp, -c("Product_Category_1", 
+# payments_exp <- dplyr::select(payments_exp, -c("Product_Category_1", 
 #                                         "Product_Category_2",
 #                                        "Product_Category_3"))
 
@@ -399,6 +415,8 @@ payements_ML$Ownership_Indicator <- as.factor(payements_ML$Ownership_Indicator)
 payements_ML$Product_Type <- as.factor(payements_ML$Product_Type)
 payements_ML$new_column_year <- as.factor(payements_ML$new_column_year)
 payements_ML$new_column_season <- as.factor(payements_ML$new_column_season)
+
+payements_ML$NC_PC_Is_NEUROLOGY <- as.factor(payements_ML$NC_PC_Is_NEUROLOGY)
 summary(payements_ML)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##### COMPANIES TABLE #####
@@ -469,8 +487,8 @@ finalTableTest <- merge(x = testPayments, y = companies_ML,
 finalTableVal <- merge(x = valPayments, y = companies_ML, 
                         by.x = "Company_ID", by.y = "Company_ID")
 
-ids_test <- select(finalTableTest, c("id"))
-ids_val <-  select(finalTableVal, c("id"))
+ids_test <- dplyr::select(finalTableTest, c("id"))
+ids_val <-  dplyr::select(finalTableVal, c("id"))
 finalTableTest_grped <- finalTableTest %>% 
                       group_by(id) %>%
                       summarise(oi = max(as.numeric(Ownership_Indicator)))
@@ -482,50 +500,144 @@ val_grouped_by_id <- finalTableVal %>%
 val_grouped_by_id$oi <- val_grouped_by_id$oi - 1
 finalTableTest_grped$oi <- finalTableTest_grped$oi - 1
 
-finalTableTrain <- select(finalTableTrain, -c("set", "id", "Company_ID"))
+finalTableTrain <- dplyr::select(finalTableTrain, -c("set", "id", "Company_ID"))
 
-finalTableTest <- select(finalTableTest, -c("set", "id", "Company_ID"))
+finalTableTest <- dplyr::select(finalTableTest, -c("set", "id", "Company_ID"))
 
-finalTableVal <- select(finalTableVal, -c("set", "id", "Company_ID"))
+finalTableVal <- dplyr::select(finalTableVal, -c("set", "id", "Company_ID"))
 
 summary(finalTableTrain)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #### CLASSIFICATION ####
+## ON VALIDATION DATA
 
+## function to evaluate the model.
+get_BAC <- function(ids, predictions, ground_truth, test = FALSE){
+  #ids - ids used in the prediction
+  # predictions - values of the predictions
+  # ground_truth - real value used to compare the predictions against
+  
+  # return a list of length 2 with 1 being the BAC value and 2 being 
+  # the table to be evaluated
+  preds <- cbind(ids, predictions)
+  colnames(preds) <- c("id", "prediction")
+  preds$prediction <- as.numeric(preds$prediction)
+  
+  summary(preds)
+  
+  grouped_data_by_id <- preds %>% 
+    group_by(id) %>%
+    summarise(max = max(prediction))
+  
+  grouped_data_by_id$max <- as.factor(grouped_data_by_id$max)
+  colnames(grouped_data_by_id) <- c("id", "prediction")
+  summary(grouped_data_by_id)
+  
+  print(predictions)
+  
+  summary(predictions)
+  
+  summary(ground_truth$oi)
+  confusion_mat <- table(grouped_data_by_id$prediction, ground_truth$oi)
+  print(confusion_mat)
+  
+  ## accuracy
+  sum(diag(confusion_mat))/sum(confusion_mat)
+  print(length(confusion_mat))
+  TP <- confusion_mat[1, 1]
+  FP <- ifelse(test, 0, confusion_mat[1, 2])
+  FN <- confusion_mat[2, 1]
+  TN <- ifelse(test, 0, confusion_mat[2, 2])
+  
+  sensitivty <- TP/(TP+FN)
+  specificty <- TN/(FP+TN)
+  
+  BAC <- (sensitivty + specificty)/2
+  return (list(BAC, grouped_data_by_id))
+}
+
+## XGBoost
+train_labels <- as.numeric(finalTableTrain$Ownership_Indicator) - 1
+train_data <- data.matrix(dplyr::select(finalTableTrain, -c("Ownership_Indicator")))
+
+bstSparse <- xgboost(data = train_data, 
+                     label = train_labels, 
+                     max.depth = 8, eta = 0.001, nthread = 2, 
+                     nrounds = 2, objective = "binary:logistic",
+                     alpha = 0.3)
+
+val_data <- data.matrix(dplyr::select(finalTableVal, -c("Ownership_Indicator")))
+
+bstSparse.preds <- predict(bstSparse, val_data)
+print(head(bstSparse.preds))
+
+bstSparse.preds <- as.numeric(bstSparse.preds > 0.5)
+
+print(head(bstSparse.preds))
+
+get_BAC(ids_val, bstSparse.preds, val_grouped_by_id)[1]
+
+## Boost (not working)
+#finalTableTrain$Ownership_Indicator <- as.numeric(finalTableTrain$Ownership_Indicator) -1
+#boost <- gbm(Ownership_Indicator~., data = 
+#              finalTableTrain, 
+#            distribution = "bernoulli", shrinkage=0.01, n.trees=100,
+#            interaction.depth = 4, verbose=TRUE)
+
+#summary(boost)
+#n.trees = seq(from = 1, to = 1000, by = 10)
+#boost.pred <- predict(boost, newdata = finalTableVal)
+#boost.pred
+
+#boost.err = with(boston[-train,], apply( LogLoss(boost.pred, ), 2, mean) )
+#plot(n.trees, boost.err, pch = 23, ylab = "Mean Squared Error", xlab = "# Trees", main = "Boosting Test Error")
+#abline(h = min(test.err), col = "red")
+
+
+## rf (not working)
+#rf <- randomForest(Ownership_Indicator~., data = finalTableTrain)
+
+## tree (working)
 tree.pay = tree(Ownership_Indicator~., data=finalTableTrain)
-tree.pred = predict(tree.pay, finalTableTest, type="class")
+tree.pred = predict(tree.pay, finalTableVal, type="class")
 
-preds <- cbind(ids, tree.pred)
-colnames(preds) <- c("id", "prediction")
-preds$prediction <- as.numeric(preds$prediction) -1
+tree_vals <- get_BAC(ids_val, tree.pred - 1, val_grouped_by_id)
+tree_BAC <- tree_vals[1]
+tree_table <- tree_vals[2]
 
-summary(preds)
+finalTableTest_grped
 
-grouped_date <- preds %>% 
-                group_by(id) %>%
-                summarise(max = max(prediction))
-
-grouped_date$max <- as.factor(grouped_date$max)
-colnames(grouped_date) <- c("id", "prediction")
-summary(grouped_date)
-
-print(tree.pred)
-
-summary(tree.pred)
-
-summary(finalTableTest_grped$oi)
-
-NROW(finalTableTest_grped$oi)
-NROW(tree.pred)
-table(grouped_date$prediction, finalTableTest_grped$oi)
-
-summary(tree.pay)
+tree_vals_test <- get_BAC(ids_val, tree.pred, val_grouped_by_id)
+tree_BAC <- tree_vals[1]
+tree_table <- tree_vals[2]
 
 ## GLM
 
 logistic <- glm(Ownership_Indicator ~ ., 
            data = finalTableTrain, family = "binomial")
-write.csv(grouped_date,"submit.csv", row.names = FALSE)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Submission
+
+# ex: using a tree
+tree.pay_test = tree(Ownership_Indicator~., data=finalTableTrain)
+tree.pred_test = predict(tree.pay, finalTableTest, type="class")
+tree_vals_test <- get_BAC(ids_test, tree.pred_test, finalTableTest_grped)
+tree_vals_test_BAC <- tree_vals_test[1]
+tree_vals_test_table <- tree_vals_test[2]
+
+test_data <- data.matrix(dplyr::select(finalTableTest, -c("Ownership_Indicator")))
+bstSparse.preds <- predict(bstSparse, test_data)
+bstSparse.preds <- as.numeric(bstSparse.preds > 0.5)
+print(head(bstSparse.preds))
+
+xgb_vals_test <- get_BAC(ids_test, bstSparse.preds, finalTableTest_grped, TRUE)
+xgb_vals_test_BAC <- xgb_vals_test[1]
+xgb_vals_test_table <- xgb_vals_test[2]
+
+get_BAC(ids_val, bstSparse.preds, val_grouped_by_id)[1]
+
+write.csv(xgb_vals_test_table, "submit.csv", row.names = FALSE)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #### OTHER ANALYSIS ####
