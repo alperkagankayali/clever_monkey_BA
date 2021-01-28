@@ -21,6 +21,8 @@ library(ranger)
 library(DiagrammeR)
 #install.packages("caret")
 library(caret)
+#devtools:::install_github("Laurae2/sparsity")
+#library(Matrix)
 
 #memory.limit(size=3000)
 
@@ -90,33 +92,62 @@ physicians_exp <- physicians_exp %>%
 physicians_exp <- subset(physicians_exp, !is.na(physicians_exp$License_State), select = -c(name))
 dim(physicians_exp)
 
+# physicians_exp <- physicians_exp %>% 
+#   mutate(License_State_Dir = case_when(
+#     License_State == "CT" | License_State == "ME" | 
+#       License_State == "MA" | License_State == "NH"| 
+#       License_State == "RI" |  License_State == "VT" ~ "NE_1",
+#     License_State == "NY" | License_State == "NJ" | License_State == "PA" ~ "NE_2",
+#     License_State == "WI" | License_State == "MI" | License_State == "IL" | License_State == "IN"| 
+#       License_State == "OH" ~ "MW_1",
+#     License_State == "ND" | License_State == "MN" | License_State == "SD" | 
+#       License_State == "IA"| License_State == "NE" | 
+#       License_State == "KS" | License_State == "MO" ~ "MW_2",
+#     License_State == "DE" | License_State == "FL" | 
+#       License_State == "GA" | License_State == "MD"| 
+#       License_State == "NC" | License_State == "SC"|
+#       License_State == "VA" | License_State == "WV"|
+#       License_State == "DC" | License_State == "PR" ~ "S_1",
+#     License_State == "AL" | License_State == "KY" | 
+#       License_State == "TN" | License_State == "MS" ~ "S_2",
+#     License_State == "AR" | License_State == "TX" | 
+#       License_State == "OK" | License_State == "LA" ~ "S_3",
+#     License_State == "AZ" | License_State == "CO"| 
+#       License_State == "ID" | License_State == "MT"|
+#       License_State == "NV" | License_State == "NM"|
+#       License_State == "UT" | License_State == "WY" ~ "W_1",
+#     License_State == "AK" | License_State == "CA" | 
+#       License_State == "HI" | License_State == "OR" |
+#       License_State == "WA" ~ "W_2",
+#     TRUE ~ "Other State"
+#   )) %>%
 physicians_exp <- physicians_exp %>% 
   mutate(License_State_Dir = case_when(
     License_State == "CT" | License_State == "ME" | 
       License_State == "MA" | License_State == "NH"| 
-      License_State == "RI" |  License_State == "VT" ~ "NE_1",
-    License_State == "NY" | License_State == "NJ" | License_State == "PA" ~ "NE_2",
+      License_State == "RI" |  License_State == "VT" ~ "NE",
+    License_State == "NY" | License_State == "NJ" | License_State == "PA" ~ "NE",
     License_State == "WI" | License_State == "MI" | License_State == "IL" | License_State == "IN"| 
-      License_State == "OH" ~ "MW_1",
+      License_State == "OH" ~ "MW",
     License_State == "ND" | License_State == "MN" | License_State == "SD" | 
       License_State == "IA"| License_State == "NE" | 
-      License_State == "KS" | License_State == "MO" ~ "MW_2",
+      License_State == "KS" | License_State == "MO" ~ "MW",
     License_State == "DE" | License_State == "FL" | 
       License_State == "GA" | License_State == "MD"| 
       License_State == "NC" | License_State == "SC"|
       License_State == "VA" | License_State == "WV"|
-      License_State == "DC" | License_State == "PR" ~ "S_1",
+      License_State == "DC" | License_State == "PR" ~ "S",
     License_State == "AL" | License_State == "KY" | 
-      License_State == "TN" | License_State == "MS" ~ "S_2",
+      License_State == "TN" | License_State == "MS" ~ "S",
     License_State == "AR" | License_State == "TX" | 
-      License_State == "OK" | License_State == "LA" ~ "S_3",
+      License_State == "OK" | License_State == "LA" ~ "S",
     License_State == "AZ" | License_State == "CO"| 
       License_State == "ID" | License_State == "MT"|
       License_State == "NV" | License_State == "NM"|
-      License_State == "UT" | License_State == "WY" ~ "W_1",
+      License_State == "UT" | License_State == "WY" ~ "W",
     License_State == "AK" | License_State == "CA" | 
       License_State == "HI" | License_State == "OR" |
-      License_State == "WA" ~ "W_2",
+      License_State == "WA" ~ "W",
     TRUE ~ "Other State"
   )) %>%
   dplyr::select(-c(License_State))
@@ -209,33 +240,64 @@ physicians_exp <- dplyr::select(physicians_exp, -c("Zipcode"))
 physicians_exp <- subset(physicians_exp, select = -c(Province))
 
 # STATE
-physicians_exp <- physicians_exp %>% 
+# physicians_exp <- physicians_exp %>% 
+#   mutate(State_Dir = case_when(
+#     State == "CT" | State == "ME" | 
+#       State == "MA" | State == "NH"| 
+#       State == "RI" |  State == "VT" ~ "NE_1",
+#     State == "NY" | State == "NJ" | State == "PA" ~ "NE_2",
+#     State == "WI" | State == "MI" | State == "IL" | State == "IN"| 
+#       State == "OH" ~ "MW_1",
+#     State == "ND" | State == "MN" | State == "SD" | 
+#       State == "IA"| State == "NE" | 
+#       State == "KS" | State == "MO" ~ "MW_2",
+#     State == "DE" | State == "FL" | 
+#       State == "GA" | State == "MD"| 
+#       State == "NC" | State == "SC"|
+#       State == "VA" | State == "WV"|
+#       State == "DC" | State == "PR" ~ "S_1",
+#     State == "AL" | State == "KY" | 
+#       State == "TN" | State == "MS" ~ "S_2",
+#     State == "AR" | State == "TX" | 
+#       State == "OK" | State == "LA" ~ "S_3",
+#     State == "AZ" | State == "CO"| 
+#       State == "ID" | State == "MT"|
+#       State == "NV" | State == "NM"|
+#       State == "UT" | State == "WY" ~ "W_1",
+#     State == "AK" | State == "CA" | 
+#       State == "HI" | State == "OR" |
+#       State == "WA" ~ "W_2",
+#     TRUE ~ "Other State"
+#   )) %>%
+
+# simplified_State
+  physicians_exp <- physicians_exp %>% 
   mutate(State_Dir = case_when(
     State == "CT" | State == "ME" | 
       State == "MA" | State == "NH"| 
-      State == "RI" |  State == "VT" ~ "NE_1",
-    State == "NY" | State == "NJ" | State == "PA" ~ "NE_2",
+      State == "RI" |  State == "VT" ~ "NE",
+    State == "NY" | State == "NJ" | State == "PA" ~ "NE",
     State == "WI" | State == "MI" | State == "IL" | State == "IN"| 
-      State == "OH" ~ "MW_1",
+      State == "OH" ~ "MW",
     State == "ND" | State == "MN" | State == "SD" | 
       State == "IA"| State == "NE" | 
-      State == "KS" | State == "MO" ~ "MW_2",
+      State == "KS" | State == "MO" ~ "MW",
     State == "DE" | State == "FL" | 
       State == "GA" | State == "MD"| 
       State == "NC" | State == "SC"|
       State == "VA" | State == "WV"|
-      State == "DC" | State == "PR" ~ "S_1",
+      State == "DC" | State == "PR" ~ "S",
     State == "AL" | State == "KY" | 
-      State == "TN" | State == "MS" ~ "S_2",
+      State == "TN" | State == "MS" ~ "S",
     State == "AR" | State == "TX" | 
-      State == "OK" | State == "LA" ~ "S_3",
+      State == "OK" | State == "LA" ~ "S",
     State == "AZ" | State == "CO"| 
       State == "ID" | State == "MT"|
       State == "NV" | State == "NM"|
-      State == "UT" | State == "WY" ~ "W_1",
+      State == "UT" | State == "WY" ~ "W",
     State == "AK" | State == "CA" | 
       State == "HI" | State == "OR" |
-      State == "WA" ~ "W_2",
+      State == "WA" ~ "W",
     TRUE ~ "Other State"
   )) %>%
   dplyr::select(-c(State))
@@ -261,7 +323,7 @@ payments_exp <- payments %>% as_tibble()
 
 ## DATE
 payments_testxxx <- payments_exp
-payments_testxxx$new_column_year <- substring(payments_exp$Date,7,10) # Adding new year column.
+payments_testxxx$new_column_year <- substring(payments_exp$Date, 7, 10) # Adding new year column.
 
 # SWITCH CASE FOR GETTING SEASONS.
 swfun <- function(x) {
@@ -281,17 +343,11 @@ swfun <- function(x) {
          as.character(x)
   )
 }
-payments_testxxx$new_column_season <- sapply(substring(payments_exp$Date,0, 1), swfun) # this is for creating a new column with different seasons.
+payments_testxxx$new_column_season <- sapply(substring(payments_exp$Date,0, 2), swfun) # this is for creating a new column with different seasons.
 payments_testxxx <- subset(payments_testxxx, select = -c(Date)) # This is for removing Date column
 payments_exp <- payments_testxxx
 
-## NUMBER OF PAYEMENTS
-subset(payments_exp, Number_of_Payments == 3)[order(payments_exp$Company_ID), ]
-## IS THERE A TRANS ID? 
-## ?
-
 ## Form_of_Payment_or_Transfer_of_Value
-# TODO: FIX
 unique(payments_exp$Form_of_Payment_or_Transfer_of_Value)
 form_of_pay_col <- as.factor(payments_exp$Form_of_Payment_or_Transfer_of_Value)
 summary(form_of_pay_col)
@@ -430,33 +486,62 @@ summary(payements_ML)
 # null if country not US (?)
 # naive solution
 companies_exp <- companies
+# companies_exp <- companies_exp %>% 
+#   mutate(Company_State_Dir = case_when(
+#     State == "CT" | State == "ME" | 
+#       State == "MA" | State == "NH"| 
+#       State == "RI" |  State == "VT" ~ "NE_1",
+#     State == "NY" | State == "NJ" | State == "PA" ~ "NE_2",
+#     State == "WI" | State == "MI" | State == "IL" | State == "IN"| 
+#       State == "OH" ~ "MW_1",
+#     State == "ND" | State == "MN" | State == "SD" | 
+#       State == "IA"| State == "NE" | 
+#       State == "KS" | State == "MO" ~ "MW_2",
+#     State == "DE" | State == "FL" | 
+#       State == "GA" | State == "MD"| 
+#       State == "NC" | State == "SC"|
+#       State == "VA" | State == "WV"|
+#       State == "DC" | State == "PR" ~ "S_1",
+#     State == "AL" | State == "KY" | 
+#       State == "TN" | State == "MS" ~ "S_2",
+#     State == "AR" | State == "TX" | 
+#       State == "OK" | State == "LA" ~ "S_3",
+#     State == "AZ" | State == "CO"| 
+#       State == "ID" | State == "MT"|
+#       State == "NV" | State == "NM"|
+#       State == "UT" | State == "WY" ~ "W_1",
+#     State == "AK" | State == "CA" | 
+#       State == "HI" | State == "OR" |
+#       State == "WA" ~ "W_2",
+#       TRUE ~ "Other"
+#   ))
 companies_exp <- companies_exp %>% 
   mutate(Company_State_Dir = case_when(
     State == "CT" | State == "ME" | 
       State == "MA" | State == "NH"| 
-      State == "RI" |  State == "VT" ~ "NE_1",
-    State == "NY" | State == "NJ" | State == "PA" ~ "NE_2",
+      State == "RI" |  State == "VT" ~ "NE",
+    State == "NY" | State == "NJ" | State == "PA" ~ "NE",
     State == "WI" | State == "MI" | State == "IL" | State == "IN"| 
-      State == "OH" ~ "MW_1",
+      State == "OH" ~ "MW",
     State == "ND" | State == "MN" | State == "SD" | 
       State == "IA"| State == "NE" | 
-      State == "KS" | State == "MO" ~ "MW_2",
+      State == "KS" | State == "MO" ~ "MW",
     State == "DE" | State == "FL" | 
       State == "GA" | State == "MD"| 
       State == "NC" | State == "SC"|
       State == "VA" | State == "WV"|
-      State == "DC" | State == "PR" ~ "S_1",
+      State == "DC" | State == "PR" ~ "S",
     State == "AL" | State == "KY" | 
-      State == "TN" | State == "MS" ~ "S_2",
+      State == "TN" | State == "MS" ~ "S",
     State == "AR" | State == "TX" | 
-      State == "OK" | State == "LA" ~ "S_3",
+      State == "OK" | State == "LA" ~ "S",
     State == "AZ" | State == "CO"| 
       State == "ID" | State == "MT"|
       State == "NV" | State == "NM"|
-      State == "UT" | State == "WY" ~ "W_1",
+      State == "UT" | State == "WY" ~ "W",
     State == "AK" | State == "CA" | 
       State == "HI" | State == "OR" |
-      State == "WA" ~ "W_2",
+      State == "WA" ~ "W",
       TRUE ~ "Other"
   ))
 companies_exp$Company_State_Dir <- as.factor(companies_exp$Company_State_Dir)
@@ -466,27 +551,31 @@ companies_ML <- companies_exp
 ### BOOSTING ####
 companies_ML_oh <- companies_ML
 dummy <- dummyVars(~ . + Company_State_Dir, data = companies_ML)
-companies_ML_oh <- data.frame(predict(dummy, newdata = companies_ML_oh)) 
+companies_ML_oh <- data.frame(predict(dummy, newdata = companies_ML)) 
 
 phys_ML_oh <- physicians_ML
 dummy <- dummyVars(~ License_State_Dir + Primary_Specialty 
-                   + PS_Neurology + State_Dir , data = phys_ML_oh)
-phys_ML_oh <- cbind(select(physicians_ML, c("id", "set")),
-                    data.frame(predict(dummy, newdata = phys_ML_oh)))
+                   + PS_Neurology + State_Dir , data = physicians_ML)
+
+phys_ML_num_feats <- select(physicians_ML, c("id", "set"))
+phys_ML_oh <- cbind(phys_ML_num_feats,
+                    data.frame(predict(dummy, newdata = physicians_ML)))
 
 colnames(payements_ML)
-pay_ML_oh <- payements_ML
 dummy <- dummyVars(~ Form_of_Payment_or_Transfer_of_Value + 
                      Nature_of_Payment_or_Transfer_of_Value + 
                      Third_Party_Recipient + Related_Product_Indicator +
                      new_column_year + Product_Type + new_column_season +
                      NC_PC_Is_NEUROLOGY, data = payements_ML)
-pay_ML_oh <- cbind(select(payements_ML, c("Physician_ID", 
+
+pay_ML_num_feats <- select(payements_ML, c("Physician_ID", 
                                            "Company_ID", 
                                            "Total_Amount_of_Payment_USDollars",
                                            "Number_of_Payments",
-                                          "Ownership_Indicator")),
-                    data.frame(predict(dummy, newdata = pay_ML_oh)))
+                                           "Ownership_Indicator"))
+                           
+pay_ML_oh <- cbind(pay_ML_num_feats, 
+                   data.frame(predict(dummy, newdata = payements_ML)))
 
 colnames(pay_ML_oh)
 companies_ML <- companies_ML_oh
@@ -600,7 +689,8 @@ get_BAC <- function(ids, predictions, ground_truth, test = FALSE){
 
 ## XGBoost
 train_labels <- as.numeric(finalTableTrain$Ownership_Indicator) - 1
-train_data <- data.matrix(dplyr::select(finalTableTrain, -c("Ownership_Indicator")))
+train_df <- dplyr::select(finalTableTrain, -c("Ownership_Indicator"))
+train_data <- data.matrix(train_df)
 pos_instances <- sum(train_labels == 1)
 neg_instances <- sum(train_labels == 0)
 scale_weight <- sqrt(neg_instances/pos_instances)
@@ -609,15 +699,16 @@ pos_instances
 scale_weight
 
 params <- list(
-  "bst:eta" = 0.001,
-  "bst:max_depth" = 10,
+  "bst:eta" = 0.01,
+  "bst:max_depth" = 8,
   "eval_metric" = "logloss",
   scale_pos_weight = scale_weight,
   "objective" = "binary:logistic")
 
 xgmat <- xgb.DMatrix(train_data, label = train_labels)
+sparse <- as(train_data, "dgCMatrix")
 
-colnames(train_data)
+names(train_data)
 
 colnames(xgmat) <- colnames(train_data)
 
@@ -629,10 +720,14 @@ xgb.save(bst, "best.model")
 
 bstSparse <- xgb.load('best.model')
 
-importance_matrix <- xgb.importance(model = bstSparse)
+importance_matrix <- xgb.importance(feature_names = colnames(train_data), 
+                                    model = bstSparse)
 xgb.plot.importance(importance_matrix, top_n = 10, measure = "Gain")
 
-xgb_tree <- xgb.plot.tree(model = bstSparse, trees=0, render=TRUE)
+colnames(train_data)
+
+xgb_tree <- xgb.plot.tree(feature_names = colnames(train_data), 
+                          model = bstSparse, trees=0, render=TRUE)
 summary(xgb_tree)
 print(xgb_tree)
 
