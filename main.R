@@ -11,10 +11,16 @@ library(gbm)
 #require(xgboost)
 #install.packages("xgboost")
 library(xgboost)
-
-#install.packages("unix") 
-#library(unix)
-#rlimit_as(1e12)  #increases to ~12GB
+library(devtools)
+#install.packages("devtools")
+#install.packages("bigrf", type="source")
+#library(bigrf)
+#require(ranger)
+library(ranger)
+#install.packages("DiagrammeR")
+library(DiagrammeR)
+#install.packages("caret")
+library(caret)
 
 #memory.limit(size=3000)
 
@@ -457,11 +463,47 @@ companies_exp$Company_State_Dir <- as.factor(companies_exp$Company_State_Dir)
 companies_exp <- subset(companies_exp, select = -c(Name, Country, State))
 companies_ML <- companies_exp
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+### BOOSTING ####
+companies_ML_oh <- companies_ML
+dummy <- dummyVars(~ . + Company_State_Dir, data = companies_ML)
+companies_ML_oh <- data.frame(predict(dummy, newdata = companies_ML_oh)) 
+
+phys_ML_oh <- physicians_ML
+dummy <- dummyVars(~ License_State_Dir + Primary_Specialty 
+                   + PS_Neurology + State_Dir , data = phys_ML_oh)
+phys_ML_oh <- cbind(select(physicians_ML, c("id", "set")),
+                    data.frame(predict(dummy, newdata = phys_ML_oh)))
+
+colnames(payements_ML)
+pay_ML_oh <- payements_ML
+dummy <- dummyVars(~ Form_of_Payment_or_Transfer_of_Value + 
+                     Nature_of_Payment_or_Transfer_of_Value + 
+                     Third_Party_Recipient + Related_Product_Indicator +
+                     new_column_year + Product_Type + new_column_season +
+                     NC_PC_Is_NEUROLOGY, data = payements_ML)
+pay_ML_oh <- cbind(select(payements_ML, c("Physician_ID", 
+                                           "Company_ID", 
+                                           "Total_Amount_of_Payment_USDollars",
+                                           "Number_of_Payments",
+                                          "Ownership_Indicator")),
+                    data.frame(predict(dummy, newdata = pay_ML_oh)))
+
+colnames(pay_ML_oh)
+companies_ML <- companies_ML_oh
+payements_ML <- pay_ML_oh
+physicians_ML <- phys_ML_oh
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #### JOIN ####
 
 summary(companies_ML)
 summary(payements_ML)
 summary(physicians_ML)
+
+
+# BAC #0.7300772
+#payements_ML <- select(payements_ML, -c(NC_PC_Is_NEUROLOGY))
+#physicians_ML <- select(physicians_ML, -c(PS_Neurology))
+
 
 trainPhysicians <- physicians_ML[physicians_ML$set == 'train', ]
 testPhysicians <- physicians_ML[physicians_ML$set == 'test', ]
@@ -521,19 +563,15 @@ get_BAC <- function(ids, predictions, ground_truth, test = FALSE){
   # the table to be evaluated
   preds <- cbind(ids, predictions)
   colnames(preds) <- c("id", "prediction")
-  preds$prediction <- as.numeric(preds$prediction)
-  
   summary(preds)
-  
+  preds$prediction <- as.numeric(preds$prediction)
+
   grouped_data_by_id <- preds %>% 
     group_by(id) %>%
-    summarise(max = max(prediction))
+    summarise(prediction = max(prediction))
   
-  grouped_data_by_id$max <- as.factor(grouped_data_by_id$max)
-  colnames(grouped_data_by_id) <- c("id", "prediction")
+  grouped_data_by_id$prediction <- as.factor(grouped_data_by_id$prediction)
   summary(grouped_data_by_id)
-  
-  print(predictions)
   
   summary(predictions)
   
@@ -542,8 +580,9 @@ get_BAC <- function(ids, predictions, ground_truth, test = FALSE){
   print(confusion_mat)
   
   ## accuracy
-  sum(diag(confusion_mat))/sum(confusion_mat)
-  print(length(confusion_mat))
+  print("accuracy")
+  print(sum(diag(confusion_mat))/sum(confusion_mat))
+  
   TP <- confusion_mat[1, 1]
   FP <- ifelse(test, 0, confusion_mat[1, 2])
   FN <- confusion_mat[2, 1]
@@ -553,23 +592,55 @@ get_BAC <- function(ids, predictions, ground_truth, test = FALSE){
   specificty <- TN/(FP+TN)
   
   BAC <- (sensitivty + specificty)/2
+  
+  print("BAC")
+  print(BAC)
   return (list(BAC, grouped_data_by_id))
 }
 
 ## XGBoost
 train_labels <- as.numeric(finalTableTrain$Ownership_Indicator) - 1
 train_data <- data.matrix(dplyr::select(finalTableTrain, -c("Ownership_Indicator")))
+pos_instances <- sum(train_labels == 1)
+neg_instances <- sum(train_labels == 0)
+scale_weight <- sqrt(neg_instances/pos_instances)
+neg_instances
+pos_instances
+scale_weight
 
-bstSparse <- xgboost(data = train_data, 
-                     label = train_labels, 
-                     max.depth = 8, eta = 0.001, nthread = 2, 
-                     nrounds = 2, objective = "binary:logistic",
-                     alpha = 0.3)
+params <- list(
+  "bst:eta" = 0.001,
+  "bst:max_depth" = 10,
+  "eval_metric" = "logloss",
+  scale_pos_weight = scale_weight,
+  "objective" = "binary:logistic")
+
+xgmat <- xgb.DMatrix(train_data, label = train_labels)
+
+colnames(train_data)
+
+colnames(xgmat) <- colnames(train_data)
+
+watchlist <- list("train" = xgmat)
+
+bst <- xgb.train(params, xgmat, 500, watchlist)
+
+xgb.save(bst, "best.model")
+
+bstSparse <- xgb.load('best.model')
+
+importance_matrix <- xgb.importance(model = bstSparse)
+xgb.plot.importance(importance_matrix, top_n = 10, measure = "Gain")
+
+xgb_tree <- xgb.plot.tree(model = bstSparse, trees=0, render=TRUE)
+summary(xgb_tree)
+print(xgb_tree)
 
 val_data <- data.matrix(dplyr::select(finalTableVal, -c("Ownership_Indicator")))
 
 bstSparse.preds <- predict(bstSparse, val_data)
-print(head(bstSparse.preds))
+
+print(bstSparse.preds)
 
 bstSparse.preds <- as.numeric(bstSparse.preds > 0.5)
 
@@ -577,31 +648,20 @@ print(head(bstSparse.preds))
 
 get_BAC(ids_val, bstSparse.preds, val_grouped_by_id)[1]
 
-## Boost (not working)
-#finalTableTrain$Ownership_Indicator <- as.numeric(finalTableTrain$Ownership_Indicator) -1
-#boost <- gbm(Ownership_Indicator~., data = 
-#              finalTableTrain, 
-#            distribution = "bernoulli", shrinkage=0.01, n.trees=100,
-#            interaction.depth = 4, verbose=TRUE)
-
-#summary(boost)
-#n.trees = seq(from = 1, to = 1000, by = 10)
-#boost.pred <- predict(boost, newdata = finalTableVal)
-#boost.pred
-
-#boost.err = with(boston[-train,], apply( LogLoss(boost.pred, ), 2, mean) )
-#plot(n.trees, boost.err, pch = 23, ylab = "Mean Squared Error", xlab = "# Trees", main = "Boosting Test Error")
-#abline(h = min(test.err), col = "red")
-
 
 ## rf (not working)
-#rf <- randomForest(Ownership_Indicator~., data = finalTableTrain)
+rf <- ranger(Ownership_Indicator~., data = finalTableTrain)
+rf = predict(rf, finalTableVal)
+print(predictions(rf))
+tree_vals <- get_BAC(ids_val, print(predictions(rf)), val_grouped_by_id)
 
 ## tree (working)
 tree.pay = tree(Ownership_Indicator~., data=finalTableTrain)
 tree.pred = predict(tree.pay, finalTableVal, type="class")
 
-tree_vals <- get_BAC(ids_val, tree.pred - 1, val_grouped_by_id)
+#summary(tree.pred)
+
+tree_vals <- get_BAC(ids_val, as.numeric(tree.pred) - 1, val_grouped_by_id)
 tree_BAC <- tree_vals[1]
 tree_table <- tree_vals[2]
 
@@ -612,7 +672,6 @@ tree_BAC <- tree_vals[1]
 tree_table <- tree_vals[2]
 
 ## GLM
-
 logistic <- glm(Ownership_Indicator ~ ., 
            data = finalTableTrain, family = "binomial")
 
@@ -629,15 +688,14 @@ tree_vals_test_table <- tree_vals_test[2]
 test_data <- data.matrix(dplyr::select(finalTableTest, -c("Ownership_Indicator")))
 bstSparse.preds <- predict(bstSparse, test_data)
 bstSparse.preds <- as.numeric(bstSparse.preds > 0.5)
-print(head(bstSparse.preds))
 
 xgb_vals_test <- get_BAC(ids_test, bstSparse.preds, finalTableTest_grped, TRUE)
 xgb_vals_test_BAC <- xgb_vals_test[1]
 xgb_vals_test_table <- xgb_vals_test[2]
 
-get_BAC(ids_val, bstSparse.preds, val_grouped_by_id)[1]
+#get_BAC(ids_val, bstSparse.preds, val_grouped_by_id)[1]
 
-write.csv(xgb_vals_test_table, "submit.csv", row.names = FALSE)
+write.csv(xgb_vals_test_table, "submit.csv", row.names = FALSE, quote=FALSE)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #### OTHER ANALYSIS ####
