@@ -21,8 +21,10 @@ library(ranger)
 library(DiagrammeR)
 #install.packages("caret")
 library(caret)
-#devtools:::install_github("Laurae2/sparsity")
-#library(Matrix)
+#install.packages("Matrix")
+library(Matrix)
+#install.packages("splitTools")
+library(splitTools)
 
 #memory.limit(size=3000)
 
@@ -384,7 +386,6 @@ unique(third_part_rec)
 summary(third_part_rec)
 ##Entity             Individual No Third Party Payment 
 ##14742                   4800                1382708 
-# (?)
 
 ## Charity
 unique(payments_exp$Charity)
@@ -400,7 +401,6 @@ NROW(no_charity) ## 767502
 ## while this is could be a good corr., I don't think we can use the col
 # due to the low number of not null observations and also the huge of No's.
 payments_exp <- dplyr::select(payments_exp, -c("Charity"))
-# should it be kept (?)
 
 ## Third_Party_Covered
 # lots of nulls and included in Third_Party_Recipient
@@ -453,7 +453,10 @@ summary(payments_exp$Product_Category_1)
 payments_exp$Product_Category_1[is.na(payments_exp$Product_Category_1)]<- "Other"
 payments_exp$Product_Category_2[is.na(payments_exp$Product_Category_2)]<- "Other"
 payments_exp$Product_Category_3[is.na(payments_exp$Product_Category_3)]<- "Other"
-payments_exp$NC_PC_Is_NEUROLOGY <- ifelse((payments_exp$Product_Category_1=="NEUROLOGY"|payments_exp$Product_Category_2=="NEUROLOGY"|payments_exp$Product_Category_3=="NEUROLOGY"), TRUE, FALSE)
+payments_exp$NC_PC_Is_NEUROLOGY <- ifelse((
+  payments_exp$Product_Category_1=="NEUROLOGY"|
+    payments_exp$Product_Category_2=="NEUROLOGY"|
+    payments_exp$Product_Category_3=="NEUROLOGY"), TRUE, FALSE)
 #Deleting Product Categories
 payments_exp <- subset(payments_exp, select = -c(Product_Category_1,Product_Category_2,Product_Category_3))
 
@@ -581,6 +584,14 @@ colnames(pay_ML_oh)
 companies_ML <- companies_ML_oh
 payements_ML <- pay_ML_oh
 physicians_ML <- phys_ML_oh
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#### CORR OF OH ####
+
+cor(select(companies_ML, -c("Company_ID")))
+cor(payements_ML)
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #### JOIN ####
 
@@ -597,15 +608,9 @@ summary(physicians_ML)
 trainPhysicians <- physicians_ML[physicians_ML$set == 'train', ]
 testPhysicians <- physicians_ML[physicians_ML$set == 'test', ]
 
-spl = sample.split(trainPhysicians$id, SplitRatio = 0.8) 
-train = subset(trainPhysicians, spl == TRUE) 
-val = subset(trainPhysicians, spl == FALSE) 
-
 ## all = TRUE removed to not join missing rows from both tables with NA (Full
 # Outer Join).
 trainPayments <- merge(x = trainPhysicians, y = payements_ML, by.x = "id", by.y = "Physician_ID")
-dim(trainPayments) # 5 mio.?
-valPayments <- merge(x = val, y = payements_ML, by.x = "id", by.y = "Physician_ID")
 dim(trainPayments) # 5 mio.?
 testPayments <- merge(x = testPhysicians, y = payements_ML, by.x = "id", by.y = "Physician_ID")
 dim(testPayments)
@@ -613,10 +618,15 @@ summary(trainPayments)
 
 finalTableTrain <- merge(x = trainPayments, y = companies_ML, 
                          by.x = "Company_ID", by.y = "Company_ID")
+inds <- partition(finalTableTrain$Ownership_Indicator, 
+                                   p = c(train = 0.8, valid = 0.2))
 finalTableTest <- merge(x = testPayments, y = companies_ML, 
                          by.x = "Company_ID", by.y = "Company_ID")
-finalTableVal <- merge(x = valPayments, y = companies_ML, 
-                        by.x = "Company_ID", by.y = "Company_ID")
+
+finalTableVal <- finalTableTrain[inds$valid, ]
+finalTableTrain <- finalTableTrain[inds$train, ]
+
+summary(finalTableVal)
 
 ids_test <- dplyr::select(finalTableTest, c("id"))
 ids_val <-  dplyr::select(finalTableVal, c("id"))
@@ -688,9 +698,22 @@ get_BAC <- function(ids, predictions, ground_truth, test = FALSE){
 }
 
 ## XGBoost
+#sparse_matrix_1 <- sparse.model.matrix(~ ., data = finalTableTrain[, 1:10])
+#sparse_matrix_2 <- sparse.model.matrix(~ ., data = finalTableTrain[, 11:20])
+#print(sparse_matrix_1)
 train_labels <- as.numeric(finalTableTrain$Ownership_Indicator) - 1
 train_df <- dplyr::select(finalTableTrain, -c("Ownership_Indicator"))
 train_data <- data.matrix(train_df)
+
+val_labels <- as.numeric(finalTableVal$Ownership_Indicator) - 1
+val_df <- dplyr::select(finalTableVal, -c("Ownership_Indicator"))
+val_data <- data.matrix(val_df)
+
+val_xgmat <- xgb.DMatrix(val_data, label = val_labels)
+xgmat <- xgb.DMatrix(train_data, label = train_labels)
+
+watchlist <- list("train" = xgmat, "valid": val_xgmat)
+
 pos_instances <- sum(train_labels == 1)
 neg_instances <- sum(train_labels == 0)
 scale_weight <- sqrt(neg_instances/pos_instances)
@@ -699,22 +722,13 @@ pos_instances
 scale_weight
 
 params <- list(
-  "bst:eta" = 0.01,
-  "bst:max_depth" = 8,
+  "bst:eta" = 0.001,
+  "bst:max_depth" = 6,
   "eval_metric" = "logloss",
   scale_pos_weight = scale_weight,
   "objective" = "binary:logistic")
 
-xgmat <- xgb.DMatrix(train_data, label = train_labels)
-sparse <- as(train_data, "dgCMatrix")
-
-names(train_data)
-
-colnames(xgmat) <- colnames(train_data)
-
-watchlist <- list("train" = xgmat)
-
-bst <- xgb.train(params, xgmat, 500, watchlist)
+bst <- xgb.train(params, xgmat, 150, watchlist)
 
 xgb.save(bst, "best.model")
 
@@ -724,24 +738,20 @@ importance_matrix <- xgb.importance(feature_names = colnames(train_data),
                                     model = bstSparse)
 xgb.plot.importance(importance_matrix, top_n = 10, measure = "Gain")
 
-colnames(train_data)
-
 xgb_tree <- xgb.plot.tree(feature_names = colnames(train_data), 
                           model = bstSparse, trees=0, render=TRUE)
 summary(xgb_tree)
 print(xgb_tree)
 
-val_data <- data.matrix(dplyr::select(finalTableVal, -c("Ownership_Indicator")))
-
 bstSparse.preds <- predict(bstSparse, val_data)
 
-print(bstSparse.preds)
+summary(bstSparse.preds)
 
-bstSparse.preds <- as.numeric(bstSparse.preds > 0.5)
+bstSparse.preds.prob <- as.numeric(bstSparse.preds > 0.5)
 
-print(head(bstSparse.preds))
+print(head(bstSparse.preds.prob))
 
-get_BAC(ids_val, bstSparse.preds, val_grouped_by_id)[1]
+get_BAC(ids_val, bstSparse.preds.prob, val_grouped_by_id)[1]
 
 
 ## rf (not working)
@@ -760,15 +770,14 @@ tree_vals <- get_BAC(ids_val, as.numeric(tree.pred) - 1, val_grouped_by_id)
 tree_BAC <- tree_vals[1]
 tree_table <- tree_vals[2]
 
-finalTableTest_grped
-
-tree_vals_test <- get_BAC(ids_val, tree.pred, val_grouped_by_id)
-tree_BAC <- tree_vals[1]
-tree_table <- tree_vals[2]
-
 ## GLM
 logistic <- glm(Ownership_Indicator ~ ., 
            data = finalTableTrain, family = "binomial")
+logistic.pred <- predict(logistic, finalTableVal)
+logistic.pred <- as.numeric(logistic.pred > 0.5)
+log_vals <- get_BAC(ids_val, as.numeric(logistic.pred), val_grouped_by_id)
+log_BAC <- log_vals[1]
+lof_table <- log_vals[2]
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## Submission
@@ -783,7 +792,6 @@ tree_vals_test_table <- tree_vals_test[2]
 test_data <- data.matrix(dplyr::select(finalTableTest, -c("Ownership_Indicator")))
 bstSparse.preds <- predict(bstSparse, test_data)
 bstSparse.preds <- as.numeric(bstSparse.preds > 0.5)
-
 xgb_vals_test <- get_BAC(ids_test, bstSparse.preds, finalTableTest_grped, TRUE)
 xgb_vals_test_BAC <- xgb_vals_test[1]
 xgb_vals_test_table <- xgb_vals_test[2]
