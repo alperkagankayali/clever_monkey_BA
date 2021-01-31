@@ -1,28 +1,20 @@
 library(tidyverse)
+#install.packages("tidyverse")
 library(ggplot2)
+#install.packages("ggplot2")
 #install.packages("tree")
 library(tree)
+#install.packages("caTools")
 library(caTools)
 #install.packages("party")
 library(party)
-library(randomForest)
-#install.packages("gbm")
-library(gbm)
 #require(xgboost)
 #install.packages("xgboost")
 library(xgboost)
-library(devtools)
-#install.packages("devtools")
-#install.packages("bigrf", type="source")
-#library(bigrf)
-#require(ranger)
-library(ranger)
 #install.packages("DiagrammeR")
 library(DiagrammeR)
 #install.packages("caret")
 library(caret)
-#install.packages("Matrix")
-library(Matrix)
 #install.packages("splitTools")
 library(splitTools)
 
@@ -50,30 +42,6 @@ o_t <- glm(as.factor(Ownership_Indicator) ~ as.factor(Charity),
            data = subset(finalTableTrain, !is.na(Charity)), family = "binomial")
 #Yes level in Charity factor has e(-7.7) relative ownership indicator rate 
 # and is highly insignificant (p>0.001).
-summary(o_t)
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#### Graphs #####
-
-ggplot(finalTableTrain, aes(x=as.factor(Ownership_Indicator), y = as.factor(Charity))) + 
-  geom_point() + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 2))
-## State
-ggplot(trainPayments, aes(x=State, fill = factor(Ownership_Indicator))) + 
-  geom_bar(position = "fill") + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 2))
-summary(trainPayments[c("Ownership_Indicator", "State")])
-
-ggplot(finalTableTrain, aes(x=State.y, fill = factor(Ownership_Indicator))) + 
-  geom_bar(position = "fill") + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 2))
-
-ggplot(finalTableTrain, aes(x=Country.y, fill = factor(Ownership_Indicator))) + 
-  geom_bar(position = "fill") + 
-  theme(axis.text.x = element_text(angle = 45))
-
-ggplot(finalTableTrain, aes(x=Country.y)) + 
-  geom_bar() + 
-  theme(axis.text.x = element_text(angle = 45))
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##### PHYSICIAN TABLE #####
@@ -94,35 +62,6 @@ physicians_exp <- physicians_exp %>%
 physicians_exp <- subset(physicians_exp, !is.na(physicians_exp$License_State), select = -c(name))
 dim(physicians_exp)
 
-# physicians_exp <- physicians_exp %>% 
-#   mutate(License_State_Dir = case_when(
-#     License_State == "CT" | License_State == "ME" | 
-#       License_State == "MA" | License_State == "NH"| 
-#       License_State == "RI" |  License_State == "VT" ~ "NE_1",
-#     License_State == "NY" | License_State == "NJ" | License_State == "PA" ~ "NE_2",
-#     License_State == "WI" | License_State == "MI" | License_State == "IL" | License_State == "IN"| 
-#       License_State == "OH" ~ "MW_1",
-#     License_State == "ND" | License_State == "MN" | License_State == "SD" | 
-#       License_State == "IA"| License_State == "NE" | 
-#       License_State == "KS" | License_State == "MO" ~ "MW_2",
-#     License_State == "DE" | License_State == "FL" | 
-#       License_State == "GA" | License_State == "MD"| 
-#       License_State == "NC" | License_State == "SC"|
-#       License_State == "VA" | License_State == "WV"|
-#       License_State == "DC" | License_State == "PR" ~ "S_1",
-#     License_State == "AL" | License_State == "KY" | 
-#       License_State == "TN" | License_State == "MS" ~ "S_2",
-#     License_State == "AR" | License_State == "TX" | 
-#       License_State == "OK" | License_State == "LA" ~ "S_3",
-#     License_State == "AZ" | License_State == "CO"| 
-#       License_State == "ID" | License_State == "MT"|
-#       License_State == "NV" | License_State == "NM"|
-#       License_State == "UT" | License_State == "WY" ~ "W_1",
-#     License_State == "AK" | License_State == "CA" | 
-#       License_State == "HI" | License_State == "OR" |
-#       License_State == "WA" ~ "W_2",
-#     TRUE ~ "Other State"
-#   )) %>%
 physicians_exp <- physicians_exp %>% 
   mutate(License_State_Dir = case_when(
     License_State == "CT" | License_State == "ME" | 
@@ -242,35 +181,6 @@ physicians_exp <- dplyr::select(physicians_exp, -c("Zipcode"))
 physicians_exp <- subset(physicians_exp, select = -c(Province))
 
 # STATE
-# physicians_exp <- physicians_exp %>% 
-#   mutate(State_Dir = case_when(
-#     State == "CT" | State == "ME" | 
-#       State == "MA" | State == "NH"| 
-#       State == "RI" |  State == "VT" ~ "NE_1",
-#     State == "NY" | State == "NJ" | State == "PA" ~ "NE_2",
-#     State == "WI" | State == "MI" | State == "IL" | State == "IN"| 
-#       State == "OH" ~ "MW_1",
-#     State == "ND" | State == "MN" | State == "SD" | 
-#       State == "IA"| State == "NE" | 
-#       State == "KS" | State == "MO" ~ "MW_2",
-#     State == "DE" | State == "FL" | 
-#       State == "GA" | State == "MD"| 
-#       State == "NC" | State == "SC"|
-#       State == "VA" | State == "WV"|
-#       State == "DC" | State == "PR" ~ "S_1",
-#     State == "AL" | State == "KY" | 
-#       State == "TN" | State == "MS" ~ "S_2",
-#     State == "AR" | State == "TX" | 
-#       State == "OK" | State == "LA" ~ "S_3",
-#     State == "AZ" | State == "CO"| 
-#       State == "ID" | State == "MT"|
-#       State == "NV" | State == "NM"|
-#       State == "UT" | State == "WY" ~ "W_1",
-#     State == "AK" | State == "CA" | 
-#       State == "HI" | State == "OR" |
-#       State == "WA" ~ "W_2",
-#     TRUE ~ "Other State"
-#   )) %>%
 
 # simplified_State
   physicians_exp <- physicians_exp %>% 
@@ -489,35 +399,6 @@ summary(payements_ML)
 # null if country not US (?)
 # naive solution
 companies_exp <- companies
-# companies_exp <- companies_exp %>% 
-#   mutate(Company_State_Dir = case_when(
-#     State == "CT" | State == "ME" | 
-#       State == "MA" | State == "NH"| 
-#       State == "RI" |  State == "VT" ~ "NE_1",
-#     State == "NY" | State == "NJ" | State == "PA" ~ "NE_2",
-#     State == "WI" | State == "MI" | State == "IL" | State == "IN"| 
-#       State == "OH" ~ "MW_1",
-#     State == "ND" | State == "MN" | State == "SD" | 
-#       State == "IA"| State == "NE" | 
-#       State == "KS" | State == "MO" ~ "MW_2",
-#     State == "DE" | State == "FL" | 
-#       State == "GA" | State == "MD"| 
-#       State == "NC" | State == "SC"|
-#       State == "VA" | State == "WV"|
-#       State == "DC" | State == "PR" ~ "S_1",
-#     State == "AL" | State == "KY" | 
-#       State == "TN" | State == "MS" ~ "S_2",
-#     State == "AR" | State == "TX" | 
-#       State == "OK" | State == "LA" ~ "S_3",
-#     State == "AZ" | State == "CO"| 
-#       State == "ID" | State == "MT"|
-#       State == "NV" | State == "NM"|
-#       State == "UT" | State == "WY" ~ "W_1",
-#     State == "AK" | State == "CA" | 
-#       State == "HI" | State == "OR" |
-#       State == "WA" ~ "W_2",
-#       TRUE ~ "Other"
-#   ))
 companies_exp <- companies_exp %>% 
   mutate(Company_State_Dir = case_when(
     State == "CT" | State == "ME" | 
@@ -554,10 +435,10 @@ companies_ML <- companies_exp
 ### BOOSTING ####
 companies_ML_oh <- companies_ML
 dummy <- dummyVars(~ . + Company_State_Dir, data = companies_ML)
-companies_ML_oh <- data.frame(predict(dummy, newdata = companies_ML)) 
+companies_ML_oh <- data.frame(predict(dummy, newdata = companies_ML))
 
 phys_ML_oh <- physicians_ML
-dummy <- dummyVars(~ License_State_Dir + Primary_Specialty 
+dummy <- dummyVars(~ License_State_Dir + Primary_Specialty
                    + PS_Neurology + State_Dir , data = physicians_ML)
 
 phys_ML_num_feats <- select(physicians_ML, c("id", "set"))
@@ -565,32 +446,25 @@ phys_ML_oh <- cbind(phys_ML_num_feats,
                     data.frame(predict(dummy, newdata = physicians_ML)))
 
 colnames(payements_ML)
-dummy <- dummyVars(~ Form_of_Payment_or_Transfer_of_Value + 
-                     Nature_of_Payment_or_Transfer_of_Value + 
+dummy <- dummyVars(~ Form_of_Payment_or_Transfer_of_Value +
+                     Nature_of_Payment_or_Transfer_of_Value +
                      Third_Party_Recipient + Related_Product_Indicator +
                      new_column_year + Product_Type + new_column_season +
                      NC_PC_Is_NEUROLOGY, data = payements_ML)
 
-pay_ML_num_feats <- select(payements_ML, c("Physician_ID", 
-                                           "Company_ID", 
+pay_ML_num_feats <- select(payements_ML, c("Physician_ID",
+                                           "Company_ID",
                                            "Total_Amount_of_Payment_USDollars",
                                            "Number_of_Payments",
                                            "Ownership_Indicator"))
-                           
-pay_ML_oh <- cbind(pay_ML_num_feats, 
+
+pay_ML_oh <- cbind(pay_ML_num_feats,
                    data.frame(predict(dummy, newdata = payements_ML)))
 
 colnames(pay_ML_oh)
 companies_ML <- companies_ML_oh
 payements_ML <- pay_ML_oh
 physicians_ML <- phys_ML_oh
-
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#### CORR OF OH ####
-
-cor(select(companies_ML, -c("Company_ID")))
-cor(payements_ML)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #### JOIN ####
@@ -600,10 +474,6 @@ summary(payements_ML)
 summary(physicians_ML)
 
 
-# BAC #0.7300772
-#payements_ML <- select(payements_ML, -c(NC_PC_Is_NEUROLOGY))
-#physicians_ML <- select(physicians_ML, -c(PS_Neurology))
-
 
 trainPhysicians <- physicians_ML[physicians_ML$set == 'train', ]
 testPhysicians <- physicians_ML[physicians_ML$set == 'test', ]
@@ -612,6 +482,7 @@ testPhysicians <- physicians_ML[physicians_ML$set == 'test', ]
 # Outer Join).
 trainPayments <- merge(x = trainPhysicians, y = payements_ML, by.x = "id", by.y = "Physician_ID")
 dim(trainPayments) # 5 mio.?
+
 testPayments <- merge(x = testPhysicians, y = payements_ML, by.x = "id", by.y = "Physician_ID")
 dim(testPayments)
 summary(trainPayments)
@@ -698,12 +569,11 @@ get_BAC <- function(ids, predictions, ground_truth, test = FALSE){
 }
 
 ## XGBoost
-#sparse_matrix_1 <- sparse.model.matrix(~ ., data = finalTableTrain[, 1:10])
-#sparse_matrix_2 <- sparse.model.matrix(~ ., data = finalTableTrain[, 11:20])
-#print(sparse_matrix_1)
+
 train_labels <- as.numeric(finalTableTrain$Ownership_Indicator) - 1
 train_df <- dplyr::select(finalTableTrain, -c("Ownership_Indicator"))
 train_data <- data.matrix(train_df)
+
 
 val_labels <- as.numeric(finalTableVal$Ownership_Indicator) - 1
 val_df <- dplyr::select(finalTableVal, -c("Ownership_Indicator"))
@@ -712,7 +582,7 @@ val_data <- data.matrix(val_df)
 val_xgmat <- xgb.DMatrix(val_data, label = val_labels)
 xgmat <- xgb.DMatrix(train_data, label = train_labels)
 
-watchlist <- list("train" = xgmat, "valid": val_xgmat)
+watchlist <- list("train" = xgmat)
 
 pos_instances <- sum(train_labels == 1)
 neg_instances <- sum(train_labels == 0)
@@ -722,28 +592,17 @@ pos_instances
 scale_weight
 
 params <- list(
-  "bst:eta" = 0.001,
-  "bst:max_depth" = 6,
-  "eval_metric" = "logloss",
-  scale_pos_weight = scale_weight,
-  "objective" = "binary:logistic")
+  eta = 0.5,
+  max_depth = 6,
+  eval_metric = "logloss",
+  scale_pos_weight = scale_weight ** 2,
+  objective = "binary:logistic", 
+  gamma = 1)
 
-bst <- xgb.train(params, xgmat, 150, watchlist)
 
-xgb.save(bst, "best.model")
-
-bstSparse <- xgb.load('best.model')
-
-importance_matrix <- xgb.importance(feature_names = colnames(train_data), 
-                                    model = bstSparse)
-xgb.plot.importance(importance_matrix, top_n = 10, measure = "Gain")
-
-xgb_tree <- xgb.plot.tree(feature_names = colnames(train_data), 
-                          model = bstSparse, trees=0, render=TRUE)
-summary(xgb_tree)
-print(xgb_tree)
-
-bstSparse.preds <- predict(bstSparse, val_data)
+bst <- xgb.train(data=xgmat, params=params, nrounds = 150, 
+                 early_stopping_rounds = 3, verbose = TRUE, watchlist = watchlist)
+bstSparse.preds <- predict(bst, val_data)
 
 summary(bstSparse.preds)
 
@@ -754,43 +613,23 @@ print(head(bstSparse.preds.prob))
 get_BAC(ids_val, bstSparse.preds.prob, val_grouped_by_id)[1]
 
 
-## rf (not working)
-rf <- ranger(Ownership_Indicator~., data = finalTableTrain)
-rf = predict(rf, finalTableVal)
-print(predictions(rf))
-tree_vals <- get_BAC(ids_val, print(predictions(rf)), val_grouped_by_id)
-
-## tree (working)
-tree.pay = tree(Ownership_Indicator~., data=finalTableTrain)
-tree.pred = predict(tree.pay, finalTableVal, type="class")
-
-#summary(tree.pred)
-
-tree_vals <- get_BAC(ids_val, as.numeric(tree.pred) - 1, val_grouped_by_id)
-tree_BAC <- tree_vals[1]
-tree_table <- tree_vals[2]
-
-## GLM
-logistic <- glm(Ownership_Indicator ~ ., 
-           data = finalTableTrain, family = "binomial")
-logistic.pred <- predict(logistic, finalTableVal)
-logistic.pred <- as.numeric(logistic.pred > 0.5)
-log_vals <- get_BAC(ids_val, as.numeric(logistic.pred), val_grouped_by_id)
-log_BAC <- log_vals[1]
-lof_table <- log_vals[2]
-
+# 0    1
+# 0 4669   18
+# 1  156  134
+# [1] "accuracy"
+# [1] 0.9650392
+# [1] "BAC"
+# [1] 0.9246237
+# [[1]]
+# [1] 0.9246237
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## Submission
 
 # ex: using a tree
-tree.pay_test = tree(Ownership_Indicator~., data=finalTableTrain)
-tree.pred_test = predict(tree.pay, finalTableTest, type="class")
-tree_vals_test <- get_BAC(ids_test, tree.pred_test, finalTableTest_grped)
-tree_vals_test_BAC <- tree_vals_test[1]
-tree_vals_test_table <- tree_vals_test[2]
+
 
 test_data <- data.matrix(dplyr::select(finalTableTest, -c("Ownership_Indicator")))
-bstSparse.preds <- predict(bstSparse, test_data)
+bstSparse.preds <- predict(bst, test_data)
 bstSparse.preds <- as.numeric(bstSparse.preds > 0.5)
 xgb_vals_test <- get_BAC(ids_test, bstSparse.preds, finalTableTest_grped, TRUE)
 xgb_vals_test_BAC <- xgb_vals_test[1]
@@ -800,135 +639,3 @@ xgb_vals_test_table <- xgb_vals_test[2]
 
 write.csv(xgb_vals_test_table, "submit.csv", row.names = FALSE, quote=FALSE)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-#### OTHER ANALYSIS ####
-#### PHYS NOT FROM US 
-trainPhysicians[trainPhysicians$Country != 'UNITED STATES' & is.na(trainPhysicians$State), ]
-
-companies[is.na(companies$Company_ID)]
-NROW(companies[companies$State == 'NY', ])
-NROW(companies[companies$State != 'NY', ])
-subset(companies, State == 'NY')
-
-#### NULL PAYEMENTS WITH PRODUCT #####
-NROW(subset(payments, is.na(Product_Type_1)))
-
-NROW(payments[is.na(payments$City_of_Travel), ])
-NROW(subset(payments, is.na(City_of_Travel)))
-
-NROW(subset(payments, !is.na(City_of_Travel)))
-
-NROW(subset(payments, Nature_of_Payment_or_Transfer_of_Value == 'Travel and Lodging'))
-subset(payments, !is.na(Contextual_Information) & Ownership_Indicator == 'No')[, c('Contextual_Information', 'Ownership_Indicator')]
-
-physicians$License_State_2
-NROW(subset(physicians, is.na(physicians$License_State_1)))
-NROW(subset(physicians, is.na(physicians$License_State_2)))
-NROW(subset(physicians, is.na(physicians$License_State_3)))
-NROW(subset(physicians, is.na(physicians$License_State_4)))
-NROW(subset(physicians, is.na(physicians$License_State_5)))
-
-train_pay <- merge(x = trainPhysicians, y = payments, by.x = "id", by.y = "Physician_ID") # not all=true, it adds non-matched values at the end.
-test_pay <- merge(x = testPhysicians, y = payments, by.x = "id", by.y = "Physician_ID")
-glimpse(train)
-summary(train)
-NROW(payments)
-summary(payments)
-
-summary(train_pay)
-
-#A subset containing of only Payments Data that should be used for training
-paymentsTrain <- subset(payments, Physician_ID %in% trainPhysicians$id )
-#A subset containing of only Payments Data that should be used for testing
-paymentsTest <- subset(payments, Physician_ID %in% testPhysicians$id )
-
-#A subset containing of only Payments Data that should be used for training AND the Ownership Indicator is YES
-paymentsTrainYes <- subset(paymentsTrain, Ownership_Indicator == 'Yes')
-#A subset containing of only Payments Data that should be used for training AND the Ownership Indicator is NO
-paymentsTrainNo <- subset(paymentsTrain, Ownership_Indicator == 'No')
-
-#A subset containing of only Physicians Data that should be used for training AND the Ownership Indicator is YES 
-trainPhysiciansYes <- subset(trainPhysicians, id %in% paymentsTrainYes$Physician_ID)
-#A subset containing of only Physicians Data that should be used for training AND the Ownership Indicator is NO -- PROBABLY NOT USABLE - NOT IMPORTANT
-trainPhysiciansNo <- subset(trainPhysicians, id %in% paymentsTrainNo$Physician_ID) # also not in trainPhysiciansYes should be.
-
-#Check if there is a significant difference in staates -> is not
-table(trainPhysiciansYes$State)/NROW(trainPhysiciansYes)
-table(trainPhysiciansNo$State)/NROW(trainPhysiciansNo)
-table(trainPhysicians$State)/NROW(trainPhysicians)
-
-
-#Check if there is a significant difference in cities -> is not
-table(trainPhysiciansYes$City)/NROW(trainPhysiciansYes)
-table(trainPhysiciansNo$City)/NROW(trainPhysiciansNo)
-table(trainPhysicians$City)/NROW(trainPhysicians)
-
-#Check Countries -> All out of the USA but only 0.02 from United States Minor Outlying Island. So not significant
-table(trainPhysiciansYes$Country)/NROW(trainPhysiciansYes)
-table(trainPhysiciansNo$Country)/NROW(trainPhysiciansNo)
-NROW(trainPhysiciansYes)
-
-#Check Primary Specialities Neurology -> Very likely its getting postive  23% (positive) vs 2.34% (negativ) if you are a Neurology Physisician there is a likelyhood of 95 % chance it is positive
-# Urology it is roughly 9 % vs 2.62 %
-# Ophthalmology 7.6 % vs 2.96
-table(trainPhysiciansYes$Primary_Specialty)
-
-table(trainPhysiciansNo$Primary_Specialty)
-count(trainPhysiciansYes,)
-setDT(trainPhysiciansYes)[,.N, by=Primary_Specialty]
-
-library(data.table)
-orderdPYPS <- setDT(trainPhysiciansYes)[, .N, by = Primary_Specialty][order(-N)]
-orderdPYPSFrequency <-orderdPYPS
-orderdPYPSFrequency$N <- as.numeric(orderdPYPS$N)/ NROW(trainPhysiciansYes)
-orderdPYPSFrequency
-
-orderdPNPS <- setDT(trainPhysiciansNo)[, .N, by = Primary_Specialty][order(-N)]
-orderdPNPSFrequency <-orderdPNPS
-orderdPNPSFrequency$N <- as.numeric(orderdPNPS$N)/ NROW(trainPhysiciansNo)
-orderdPNPSFrequency
-
-orderdPAPS <- setDT(trainPhysicians)[, .N, by = Primary_Specialty][order(-N)]
-
-#ProductCategories -> Neurology
-ProductCatAll <- setDT(paymentsTrain)[, .N, by = Product_Category_1][order(-N)]
-ProductCatYes1 <- setDT(paymentsTrainYes)[, .N, by = Product_Category_1][order(-N)]
-ProductCatYes2 <- setDT(paymentsTrainYes)[, .N, by = Product_Category_2][order(-N)]
-ProductCatYes3 <- setDT(paymentsTrainYes)[, .N, by = Product_Category_3][order(-N)]
-
-#ProductCategories -> Also filter -> 64406-008-01, 64406-006-02, 64406-011-01
-ProductCodeAll1 <- setDT(paymentsTrain)[, .N, by = Product_Code_1][order(-N)]
-ProductCodeYes1 <- setDT(paymentsTrainYes)[, .N, by = Product_Code_1][order(-N)]
-ProductCodeYes2 <- setDT(paymentsTrainYes)[, .N, by = Product_Code_2][order(-N)]
-ProductCodeYes3 <- setDT(paymentsTrainYes)[, .N, by = Product_Code_3][order(-N)]
-
-#ProductTypes -> Biological
-ProductTypeAll1 <- setDT(paymentsTrain)[, .N, by = Product_Type_1][order(-N)]
-ProductTypeYes1 <- setDT(paymentsTrainYes)[, .N, by = Product_Type_1][order(-N)]
-ProductTypeYes2 <- setDT(paymentsTrainYes)[, .N, by = Product_Type_2][order(-N)]
-ProductTypeYes3 <- setDT(paymentsTrainYes)[, .N, by = Product_Type_3][order(-N)]
-
-#States
-PhysisicianStateAll1 <- setDT(trainPhysicians)[, .N, by = State][order(-N)]
-PhysisicianStateYes1 <- setDT(trainPhysiciansYes)[, .N, by = State][order(-N)]
-
-CompanyStateAll1 <- setDT(companies)[, .N, by = State][order(-N)]
-CompanyStateYes1 <- setDT(trainPhysiciansYes)[, .N, by = State][order(-N)]
-
-#City
-PhysisicianCityAll1 <- setDT(trainPhysicians)[, .N, by = City][order(-N)]
-PhysisicianCityYes1 <- setDT(trainPhysiciansYes)[, .N, by = City][order(-N)]
-#ZIP
-PhysisicianZIPAll1 <- setDT(trainPhysicians)[, .N, by = Zipcode][order(-N)]
-PhysisicianZIPYes1 <- setDT(trainPhysiciansYes)[, .N, by = Zipcode][order(-N)]
-#Licence State
-PhysisicianLicenseStateAll1 <- setDT(trainPhysicians)[, .N, by = License_State_1][order(-N)]
-PhysisicianLicenseStateYes1 <- setDT(trainPhysiciansYes)[, .N, by = License_State_1][order(-N)]
-
-PhysisicianLicenseStateAll1Freque <-PhysisicianLicenseStateAll1
-PhysisicianLicenseStateAll1Freque$N <- as.numeric(PhysisicianLicenseStateAll1Freque$N)/ NROW(trainPhysicians)
-PhysisicianLicenseStateYes1Freque <-PhysisicianLicenseStateYes1
-PhysisicianLicenseStateYes1Freque$N <- as.numeric(PhysisicianLicenseStateYes1Freque$N)/ NROW(trainPhysiciansYes)
-
-
-NROW(paymentsTrainYes)
